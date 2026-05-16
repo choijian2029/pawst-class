@@ -31,6 +31,30 @@
       font-size: 22px;
       margin-top: 30px;
     }
+    a { 
+      text-decoration: none;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 20px;
+      width: 180px;
+      background-color: white;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.08);
+    }
+    input {
+      width: 250px;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      margin-top: 4px;
+    }
+    label {
+      font-weight: bold;
+      font-size: 13px;
+      color: #444;
+    }
   </style>
 </head>
 <body>
@@ -83,7 +107,20 @@
 
   <form style="display:inline-block; text-align:left; margin-top:20px;">
 
-    <label>Your Name</label><br>
+    <label>Full Name (English)</label><br>
+    <input type="text" placeholder="Jian Choi"><br><br>
+
+    <label>Reservation Number</label><br>
+    <input type="text" placeholder="ABC123456"><br><br>
+
+    <label>Phone Number</label><br>
+    <input type="tel" placeholder="010-0000-0000"><br><br>
+
+    <label>Address</label><br>
+    <input type="text" placeholder="123 Main St, Atlanta, GA"><br><br>
+
+    <label>Nationality / Residency Status</label><br>
+    <input type="text" placeholder="e.g. Korean, US Citizen, PR"><br><br>
     <input type="text" placeholder="Jian Choi"><br><br>
 
     <label>Flight Date</label><br>
