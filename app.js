@@ -13,7 +13,7 @@ function selAir(btn) {
 
 // Bottom navigation
 function showSection(section) {
-  var sections = ['home', 'register', 'orgs', 'reviews'];
+  var sections = ['home', 'register', 'orgs', 'reviews', 'foster'];
   sections.forEach(function(s) {
     document.getElementById('section-' + s).style.display = 'none';
   });

@@ -18,6 +18,26 @@
     <button onclick="showSection('register')">I want to help ✈️</button>
     <br><br>
 
+<h2>Flight Status 📋</h2>
+    <div class="card" style="margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="text-align:center; flex:1;">
+          <p style="font-size:11px; color:#9CA3AF;">STEP 1</p>
+          <p style="font-weight:700; font-size:13px; color:#FF8C00;">예약완료</p>
+        </div>
+        <p style="color:#E8E0D8;">→</p>
+        <div style="text-align:center; flex:1;">
+          <p style="font-size:11px; color:#9CA3AF;">STEP 2</p>
+          <p style="font-weight:700; font-size:13px; color:#9CA3AF;">매칭완료</p>
+        </div>
+        <p style="color:#E8E0D8;">→</p>
+        <div style="text-align:center; flex:1;">
+          <p style="font-size:11px; color:#9CA3AF;">STEP 3</p>
+          <p style="font-weight:700; font-size:13px; color:#9CA3AF;">이동완료</p>
+        </div>
+      </div>
+    </div>
+    <br>
     <h2>How it works</h2>
     <div class="card" style="text-align:left; margin-bottom:10px;">
       <p>1. Register your flight from ICN to ATL</p>
@@ -140,7 +160,34 @@
       <p style="margin-top:8px;">The organization prepared everything. I just had to show up!</p>
     </div>
   </div>
+<!-- FOSTER HOME 섹션 -->
+  <div id="section-foster" style="display:none;">
+    <h2>Foster Home 🏠</h2>
+    <p style="margin-bottom:16px;">Can you provide a temporary home for a rescue dog?</p>
 
+    <div class="card" style="margin-bottom:12px; text-align:left;
+    background:#FFF5E6;">
+      <p style="font-weight:700; color:#FF8C00;">Why Foster?</p>
+      <p style="margin-top:6px;">Without a foster home, dogs cannot come to the U.S. even if a volunteer is ready to fly.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:12px; text-align:left;">
+      <p style="font-weight:700; color:#333;">🎓 Student Volunteer Credit</p>
+      <p style="margin-top:6px;">Fostering may qualify for volunteer hours at Millcreek HS PAWS Club!</p>
+    </div>
+
+    <div class="card" style="margin-bottom:16px; text-align:left;">
+      <label>Your Name</label><br>
+      <input type="text" placeholder="Jian Choi"><br><br>
+      <label>Email</label><br>
+      <input type="email" placeholder="your@email.com"><br><br>
+      <label>City / State</label><br>
+      <input type="text" placeholder="Atlanta, GA"><br><br>
+      <button style="width:100%;" onclick="alert('Thank you! We will contact you soon 🐾')">
+        Apply to Foster 🏠
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- 하단 탭 바 -->
@@ -156,6 +203,9 @@
   </button>
   <button class="nav-item" id="nav-reviews" onclick="showSection('reviews')">
     ⭐<br>Reviews
+  </button>
+  <button class="nav-item" id="nav-foster" onclick="showSection('foster')">
+    🏠<br>Foster
   </button>
 </nav>
 
