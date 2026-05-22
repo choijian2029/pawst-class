@@ -3,7 +3,7 @@
 A mobile app that connects people flying from Korea to Atlanta  
 with Korean rescue dogs that need a human escort to reach their forever home.
 
----
+----
 
 ## Why I Built This
 
@@ -15,7 +15,7 @@ airline rules, preparing documents — all through Instagram DMs.
 
 I thought there had to be a better way. So I built one.
 
----
+----
 
 ## What PAWST CLASS Does
 
@@ -24,7 +24,7 @@ I thought there had to be a better way. So I built one.
 - Supports foster home applications for dogs awaiting transport
 - Partners with 3 verified Korean rescue organizations
 
----
+----
 
 ## Partner Organizations
 
@@ -32,7 +32,7 @@ I thought there had to be a better way. So I built one.
 - [Adopt Me Korea](https://adoptmekr.org/) — Toronto, Canada
 - [Gamjane House](https://www.instagram.com/gamjane_supportlist/) — Korea
 
----
+----
 
 ## Development Log
 
@@ -51,7 +51,7 @@ I thought there had to be a better way. So I built one.
 | v1.1 | May 22, 2026 | Separated CSS · JS files + bottom nav |
 | v1.2 | May 22, 2026 | Flight status + Foster Home section |
 
----
+----
 
 ## About
 
