@@ -461,3 +461,41 @@ body {
   position: static;
   font-size: 10px; padding: 4px 9px;
 }
+
+/* ── DASH TABS ── */
+.dash-tab {
+  flex: 1;
+  padding: 9px;
+  border-radius: 12px;
+  border: 1.5px solid var(--bd);
+  background: var(--bg);
+  color: var(--t2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+.dash-tab.on {
+  background: var(--or);
+  color: #fff;
+  border-color: var(--or);
+}
+
+/* ── MATCH SELECT ── */
+.match-dog-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 2px solid var(--bd);
+  margin-bottom: 8px;
+  cursor: pointer;
+  background: var(--wh);
+  transition: all .15s;
+}
+.match-dog-item.on {
+  border-color: var(--or);
+  background: var(--orL);
+}

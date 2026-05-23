@@ -155,16 +155,10 @@ var obS = [
 ];
 
 // ── SCREEN SWITCHING ──
-function sc(id) {
-  ['s-splash','s-ob','s-main'].forEach(function(s) {
-    document.getElementById(s).classList.remove('on');
-  });
-  document.getElementById(id).classList.add('on');
-}
-function goOb()    { obI = 0; sc('s-ob'); rOb(); }
-function goHome()  { sc('s-main'); setTab('home'); }
-function goAdmin() { sc('s-main'); setAdm(); }
-function bkOb()    { sc('s-splash'); }
+function goOb()    { obI = 0; scGo('s-ob'); rOb(); }
+function goHome()  { scGo('s-main'); setTab('home'); }
+function goAdmin() { scGo('s-main'); setAdm(); }
+function bkOb()    { scGo('s-splash'); }
 
 // ── ONBOARDING ──
 function rOb() {
@@ -240,7 +234,7 @@ function setTab(t) {
   if (nb[idx]) nb[idx].classList.add('on');
 
   if (t === 'reviews') rRevs();
-  sc('s-main');
+  scGo('s-main');
 }
 
 // ── ADMIN ──
@@ -252,7 +246,7 @@ function setAdm() {
   document.getElementById('t-admin').style.display = 'flex';
   document.querySelectorAll('.ni').forEach(function(b) { b.classList.remove('on'); });
   rAdm();
-  sc('s-main');
+  scGo('s-main');
 }
 
 function rAdm() {
@@ -344,7 +338,49 @@ function pvAgree() { if (!pvOk) togPv(); clMo('pm'); }
 function doReg() {
   var msg = curLang === 'ko' ? '개인정보 수집·이용에 동의해 주세요.' : 'Please agree to the privacy policy.';
   if (!pvOk) { alert(msg); return; }
-  showS();
+
+  var name     = document.getElementById('vol-name')    ? document.getElementById('vol-name').value.trim()    : '';
+  var resno    = document.getElementById('vol-resno')   ? document.getElementById('vol-resno').value.trim()   : '';
+  var phone    = document.getElementById('vol-phone')   ? document.getElementById('vol-phone').value.trim()   : '';
+  var email    = document.getElementById('vol-email')   ? document.getElementById('vol-email').value.trim()   : '';
+  var address  = document.getElementById('vol-address') ? document.getElementById('vol-address').value.trim() : '';
+  var kakao    = document.getElementById('vol-kakao')   ? document.getElementById('vol-kakao').value.trim()   : '';
+  var nation   = document.getElementById('vol-nation')  ? document.getElementById('vol-nation').value.trim()  : '';
+  var dateEl   = document.querySelector('#t-register input[type="date"]');
+  var flightNo = document.getElementById('fno') ? document.getElementById('fno').value.trim() : '';
+  var airline  = '';
+  document.querySelectorAll('#airline-chips .chip.on').forEach(function(c) { airline = c.textContent.trim(); });
+
+  var btn = document.getElementById('rbtn');
+  btn.textContent = curLang === 'ko' ? '등록 중...' : 'Submitting...';
+  btn.style.opacity = '.6';
+
+  db.collection('volunteers').add({
+    name:       name,
+    resno:      resno,
+    phone:      phone,
+    email:      email,
+    address:    address,
+    kakao:      kakao,
+    nation:     nation,
+    flightDate: dateEl ? dateEl.value : '',
+    flightNo:   flightNo,
+    airline:    airline,
+    dest:       'ATL',
+    status:     'booked',   // booked → matched → done
+    matchedDog: null,
+    createdAt:  firebase.firestore.FieldValue.serverTimestamp()
+  })
+  .then(function() {
+    btn.textContent = curLang === 'ko' ? '등록 완료하기' : 'Complete Registration';
+    btn.style.opacity = '1';
+    showS();
+  })
+  .catch(function(e) {
+    btn.textContent = curLang === 'ko' ? '등록 완료하기' : 'Complete Registration';
+    btn.style.opacity = '1';
+    alert('오류가 발생했습니다: ' + e.message);
+  });
 }
 
 // ── AIRLINE CHIPS ──
@@ -421,3 +457,442 @@ function rRevs() {
 
 // ── INIT ──
 rRevs();
+
+// ── FIREBASE 화면 전환 ──
+function scGo(id) {
+  ['s-splash','s-ob','s-main','s-orglogin','s-orgdash','s-dogform'].forEach(function(s) {
+    var el = document.getElementById(s);
+    if (el) el.classList.remove('on');
+  });
+  document.getElementById(id).classList.add('on');
+}
+
+// ── 기관 로그인 ──
+function doLogin() {
+  var email = document.getElementById('org-email').value.trim();
+  var pw    = document.getElementById('org-pw').value;
+  var btn   = document.getElementById('login-btn');
+  var err   = document.getElementById('login-err');
+
+  if (!email || !pw) { showErr('login-err', '이메일과 비밀번호를 입력해 주세요.'); return; }
+
+  btn.textContent = '로그인 중...';
+  btn.style.opacity = '.6';
+
+  auth.signInWithEmailAndPassword(email, pw)
+    .then(function(cred) {
+      btn.textContent = '로그인';
+      btn.style.opacity = '1';
+      err.style.display = 'none';
+      var orgInfo = ORG_MAP[email] || { name: email, ico: '🏥', color: '#FFF5E6' };
+      document.getElementById('dash-orgname').textContent = orgInfo.ico + ' ' + orgInfo.name;
+      loadOrgDogs(email);
+      scGo('s-orgdash');
+    })
+    .catch(function(e) {
+      btn.textContent = '로그인';
+      btn.style.opacity = '1';
+      showErr('login-err', '이메일 또는 비밀번호가 올바르지 않습니다.');
+    });
+}
+
+function doLogout() {
+  auth.signOut().then(function() {
+    document.getElementById('org-email').value = '';
+    document.getElementById('org-pw').value = '';
+    scGo('s-splash');
+  });
+}
+
+// ── 에러 표시 ──
+function showErr(id, msg) {
+  var el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ── 강아지 사진 ──
+var dogPhotoBase64 = null;
+var isUrgent = false;
+
+function ldDogPhoto(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var r = new FileReader();
+  r.onload = function(ev) {
+    dogPhotoBase64 = ev.target.result;
+    document.getElementById('dog-photo-img').src = dogPhotoBase64;
+    document.getElementById('dog-photo-prev').style.display = 'block';
+    document.getElementById('dog-photo-drop').style.display = 'none';
+  };
+  r.readAsDataURL(file);
+}
+function rmDogPhoto() {
+  dogPhotoBase64 = null;
+  document.getElementById('dog-photo-img').src = '';
+  document.getElementById('dog-photo-prev').style.display = 'none';
+  document.getElementById('dog-photo-drop').style.display = 'block';
+  document.getElementById('dog-photo-inp').value = '';
+}
+function setUrg(v) {
+  isUrgent = v;
+  document.getElementById('urg-no').classList.toggle('on', !v);
+  document.getElementById('urg-yes').classList.toggle('on', v);
+}
+
+// ── 강아지 등록 (Firestore) ──
+function submitDog() {
+  var name      = document.getElementById('dog-name').value.trim();
+  var breed     = document.getElementById('dog-breed').value.trim();
+  var weight    = document.getElementById('dog-weight').value.trim();
+  var age       = document.getElementById('dog-age').value.trim();
+  var dateFrom  = document.getElementById('dog-date-from').value;
+  var dateTo    = document.getElementById('dog-date-to').value;
+  var memo      = document.getElementById('dog-memo').value.trim();
+  var errEl     = document.getElementById('dogform-err');
+  var btn       = document.getElementById('dog-submit-btn');
+
+  errEl.style.display = 'none';
+
+  if (!name || !breed || !weight || !dateFrom || !dateTo) {
+    showErr('dogform-err', '이름, 견종, 몸무게, 이동 기간은 필수 항목입니다.');
+    return;
+  }
+
+  var user = auth.currentUser;
+  if (!user) { showErr('dogform-err', '로그인이 필요합니다.'); return; }
+
+  var orgInfo = ORG_MAP[user.email] || { name: user.email, ico: '🐾', color: '#FFF5E6' };
+
+  btn.textContent = '등록 중...';
+  btn.style.opacity = '.6';
+
+  db.collection('dogs').add({
+    name:      name,
+    breed:     breed,
+    weight:    parseFloat(weight),
+    age:       age,
+    dateFrom:  dateFrom,
+    dateTo:    dateTo,
+    urgent:    isUrgent,
+    memo:      memo,
+    photo:     dogPhotoBase64 || null,
+    org:       orgInfo.name,
+    orgEmail:  user.email,
+    orgIco:    orgInfo.ico,
+    orgColor:  orgInfo.color,
+    dest:      'ATL',
+    status:    'waiting',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  })
+  .then(function() {
+    btn.textContent = '등록 완료 🐾';
+    btn.style.opacity = '1';
+    // 폼 초기화
+    ['dog-name','dog-breed','dog-weight','dog-age','dog-date-from','dog-date-to','dog-memo'].forEach(function(id) {
+      document.getElementById(id).value = '';
+    });
+    rmDogPhoto();
+    setUrg(false);
+    loadOrgDogs(user.email);
+    setTimeout(function() {
+      btn.textContent = '등록 완료 🐾';
+      scGo('s-orgdash');
+    }, 800);
+  })
+  .catch(function(e) {
+    btn.textContent = '등록 완료 🐾';
+    btn.style.opacity = '1';
+    showErr('dogform-err', '등록 중 오류가 발생했습니다: ' + e.message);
+  });
+}
+
+// ── 기관 강아지 목록 불러오기 ──
+function loadOrgDogs(email) {
+  var listEl = document.getElementById('org-doglist');
+  listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px;">불러오는 중...</div>';
+
+  db.collection('dogs')
+    .where('orgEmail', '==', email)
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(function(snap) {
+      if (snap.empty) {
+        listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">아직 등록된 강아지가 없어요 🐾<br>위 버튼으로 첫 강아지를 등록해보세요!</div>';
+        return;
+      }
+      listEl.innerHTML = snap.docs.map(function(doc) {
+        var d = doc.data();
+        var stMap = { waiting:'대기중', matched:'매칭완료', done:'완료' };
+        var stColorMap = { waiting:'#FF8C00', matched:'#3B82F6', done:'#2D9E6B' };
+        var stBgMap = { waiting:'#FFF5E6', matched:'#EFF6FF', done:'#E8F7F0' };
+        var st = d.status || 'waiting';
+        var photoHtml = d.photo
+          ? '<img src="' + d.photo + '" style="width:48px;height:48px;border-radius:10px;object-fit:cover;flex-shrink:0;">'
+          : '<div style="width:48px;height:48px;border-radius:10px;background:' + (d.orgColor||'#FFF5E6') + ';display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">' + (d.orgIco||'🐶') + '</div>';
+        return '<div style="background:#fff;border-radius:12px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;border:1px solid #E8E0D8;">' +
+          photoHtml +
+          '<div style="flex:1;min-width:0;">' +
+          '<div style="font-weight:700;font-size:14px;">' + (d.urgent?'⚡ ':'') + d.name + ' <span style="font-weight:400;color:#9CA3AF;font-size:12px;">· ' + d.breed + ' · ' + d.weight + 'kg</span></div>' +
+          '<div style="font-size:11px;color:#3B82F6;margin-top:1px;">→ ' + (d.dest||'ATL') + ' · ' + (d.dateFrom||'') + ' ~ ' + (d.dateTo||'') + '</div>' +
+          '</div>' +
+          '<span style="font-size:11px;padding:3px 9px;border-radius:9px;font-weight:700;background:' + stBgMap[st] + ';color:' + stColorMap[st] + ';flex-shrink:0;">' + stMap[st] + '</span>' +
+          '</div>';
+      }).join('');
+    }, function(e) {
+      listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--re);font-size:13px;">오류: ' + e.message + '</div>';
+    });
+}
+
+// ── 홈 화면 강아지 실시간 로드 (Firestore) ──
+function loadHomeDogs() {
+  db.collection('dogs')
+    .where('status', '==', 'waiting')
+    .orderBy('urgent', 'desc')
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(function(snap) {
+      if (snap.empty) return; // 데이터 없으면 더미 유지
+      // dog grid 업데이트
+      var grid = document.querySelector('.dog-grid');
+      if (!grid) return;
+      grid.innerHTML = snap.docs.slice(0, 4).map(function(doc) {
+        var d = doc.data();
+        var photoInner = d.photo
+          ? '<img src="' + d.photo + '" style="width:100%;height:100%;object-fit:cover;">'
+          : '<span style="font-size:32px;">' + (d.orgIco||'🐶') + '</span>';
+        return '<div class="dc">' +
+          '<div class="dt" style="background:' + (d.orgColor||'#FFF0EB') + ';">' +
+          photoInner +
+          (d.urgent ? '<span class="du" data-ko="긴급" data-en="Urgent">긴급</span>' : '') +
+          '</div>' +
+          '<div class="di">' +
+          '<div class="dn">' + d.name + '</div>' +
+          '<div class="db">' + d.breed + ' · ' + d.weight + 'kg</div>' +
+          '<div class="dr">→ ' + (d.dest||'ATL') + '</div>' +
+          '<div class="do">' + (d.org||'') + '</div>' +
+          '</div></div>';
+      }).join('');
+    });
+}
+
+// 홈 진입 시 실시간 로드
+document.addEventListener('DOMContentLoaded', function() {
+  loadHomeDogs();
+});
+
+// ── 대시보드 탭 전환 ──
+function setDashTab(t) {
+  document.getElementById('dash-dogs-panel').style.display   = t === 'dogs'   ? 'block' : 'none';
+  document.getElementById('dash-vols-panel').style.display   = t === 'vols'   ? 'block' : 'none';
+  document.getElementById('dash-foster-panel').style.display = t === 'foster' ? 'block' : 'none';
+  document.getElementById('tab-dogs').classList.toggle('on',   t === 'dogs');
+  document.getElementById('tab-vols').classList.toggle('on',   t === 'vols');
+  document.getElementById('tab-foster').classList.toggle('on', t === 'foster');
+}
+
+// ── 봉사자 목록 실시간 로드 ──
+function loadVolunteers() {
+  var listEl = document.getElementById('org-vollist');
+  if (!listEl) return;
+
+  db.collection('volunteers')
+    .where('status', '==', 'booked')
+    .orderBy('flightDate', 'asc')
+    .onSnapshot(function(snap) {
+      if (snap.empty) {
+        listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">대기 중인 봉사자가 없어요 ✈️</div>';
+        return;
+      }
+      listEl.innerHTML = snap.docs.map(function(doc) {
+        var v = doc.data();
+        var vid = doc.id;
+        return '<div style="background:#fff;border-radius:12px;padding:12px 13px;margin-bottom:8px;border:1px solid #E8E0D8;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+          '<div><div style="font-weight:700;font-size:14px;">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + '</div>' +
+          '<div style="font-size:12px;color:var(--t2);margin-top:1px;">ICN → ATL · ' + (v.flightDate||'날짜 미정') + '</div></div>' +
+          '<span style="background:#FFF5E6;color:#FF8C00;font-size:10px;font-weight:700;padding:3px 8px;border-radius:9px;">예약완료</span>' +
+          '</div>' +
+          '<div style="font-size:12px;color:var(--t2);margin-bottom:4px;">👤 ' + (v.name||'미입력') + ' · ' + (v.nation||'') + '</div>' +
+          (v.resno ? '<div style="font-size:12px;color:var(--t2);margin-bottom:4px;">🎫 예약번호: ' + v.resno + '</div>' : '') +
+          (v.kakao ? '<div style="font-size:12px;color:var(--t2);margin-bottom:8px;">💬 ' + v.kakao + '</div>' : '<div style="margin-bottom:8px;"></div>') +
+          '<button class="btn-pr" onclick="openMatchModal(\'' + vid + '\')" style="padding:9px;font-size:12px;">이 봉사자와 매칭하기 🐾</button>' +
+          '</div>';
+      }).join('');
+    });
+}
+
+// ── 매칭 모달 ──
+var selectedVolId = null;
+var selectedDogId = null;
+var cachedDogs    = [];
+
+function openMatchModal(volId) {
+  selectedVolId = volId;
+  selectedDogId = null;
+
+  // 봉사자 정보 표시
+  db.collection('volunteers').doc(volId).get().then(function(doc) {
+    var v = doc.data();
+    document.getElementById('mm-vol-info').innerHTML =
+      '✈️ <b>' + (v.airline||'') + ' ' + (v.flightNo||'') + '</b> · ' + (v.flightDate||'') +
+      '<br>👤 ' + (v.name||'') + ' · ' + (v.nation||'') +
+      (v.kakao ? '<br>💬 카카오 ID: ' + v.kakao : '');
+  });
+
+  // 현재 기관의 대기 중인 강아지 목록
+  var user = auth.currentUser;
+  if (!user) return;
+
+  db.collection('dogs')
+    .where('orgEmail', '==', user.email)
+    .where('status', '==', 'waiting')
+    .get()
+    .then(function(snap) {
+      cachedDogs = snap.docs;
+      if (snap.empty) {
+        document.getElementById('mm-dog-list').innerHTML =
+          '<div style="text-align:center;padding:16px;color:var(--t3);font-size:13px;">매칭 가능한 강아지가 없어요.<br>먼저 강아지를 등록해주세요!</div>';
+        document.getElementById('mm-confirm').style.display = 'none';
+        return;
+      }
+      document.getElementById('mm-confirm').style.display = 'block';
+      document.getElementById('mm-dog-list').innerHTML = snap.docs.map(function(doc) {
+        var d = doc.data();
+        var photoHtml = d.photo
+          ? '<img src="' + d.photo + '" style="width:40px;height:40px;border-radius:9px;object-fit:cover;flex-shrink:0;">'
+          : '<div style="width:40px;height:40px;border-radius:9px;background:' + (d.orgColor||'#FFF5E6') + ';display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">' + (d.orgIco||'🐶') + '</div>';
+        return '<div class="match-dog-item" id="mdog-' + doc.id + '" onclick="selectDog(\'' + doc.id + '\')">' +
+          photoHtml +
+          '<div style="flex:1;"><div style="font-weight:700;font-size:13px;">' + (d.urgent?'⚡ ':'') + d.name + '</div>' +
+          '<div style="font-size:11px;color:var(--t2);">' + d.breed + ' · ' + d.weight + 'kg · ' + (d.dateFrom||'') + ' ~ ' + (d.dateTo||'') + '</div></div>' +
+          '</div>';
+      }).join('');
+    });
+
+  document.getElementById('mm').classList.add('on');
+}
+
+function selectDog(dogId) {
+  selectedDogId = dogId;
+  document.querySelectorAll('.match-dog-item').forEach(function(el) { el.classList.remove('on'); });
+  var el = document.getElementById('mdog-' + dogId);
+  if (el) el.classList.add('on');
+}
+
+function confirmMatch() {
+  if (!selectedVolId || !selectedDogId) {
+    alert('강아지를 선택해주세요.');
+    return;
+  }
+  var btn = document.getElementById('mm-confirm');
+  btn.textContent = '매칭 중...';
+  btn.style.opacity = '.6';
+
+  var batch = db.batch();
+  // 봉사자 상태 업데이트
+  batch.update(db.collection('volunteers').doc(selectedVolId), {
+    status: 'matched',
+    matchedDog: selectedDogId
+  });
+  // 강아지 상태 업데이트
+  batch.update(db.collection('dogs').doc(selectedDogId), {
+    status: 'matched',
+    matchedVol: selectedVolId
+  });
+
+  batch.commit()
+    .then(function() {
+      btn.textContent = '매칭 확정 🐾';
+      btn.style.opacity = '1';
+      clMo('mm');
+      alert('🎉 매칭이 완료되었습니다! 봉사자에게 카카오톡으로 연락해주세요.');
+    })
+    .catch(function(e) {
+      btn.textContent = '매칭 확정 🐾';
+      btn.style.opacity = '1';
+      alert('오류: ' + e.message);
+    });
+}
+
+// loadOrgDogs 호출 시 봉사자도 같이 로드
+var _origLoadOrgDogs = loadOrgDogs;
+loadOrgDogs = function(email) {
+  _origLoadOrgDogs(email);
+  loadVolunteers();
+};
+
+// ── FOSTER 신청 저장 ──
+function submitFoster() {
+  var name  = document.getElementById('fos-name')  ? document.getElementById('fos-name').value.trim()  : '';
+  var email = document.getElementById('fos-email') ? document.getElementById('fos-email').value.trim() : '';
+  var city  = document.getElementById('fos-city')  ? document.getElementById('fos-city').value.trim()  : '';
+  var home  = document.getElementById('fos-home')  ? document.getElementById('fos-home').value  : '';
+  var pets  = document.getElementById('fos-pets')  ? document.getElementById('fos-pets').value  : '';
+
+  if (!name || !email || !city) {
+    alert(curLang === 'ko' ? '이름, 이메일, 거주 도시는 필수입니다.' : 'Name, email, and city are required.');
+    return;
+  }
+
+  db.collection('fosters').add({
+    name:      name,
+    email:     email,
+    city:      city,
+    homeType:  home,
+    pets:      pets,
+    status:    'pending',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  })
+  .then(function() {
+    ['fos-name','fos-email','fos-city'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    var msg = curLang === 'ko' ? '신청이 완료되었습니다! 곧 연락드릴게요 🐾' : 'Application submitted! We\'ll be in touch soon 🐾';
+    alert(msg);
+  })
+  .catch(function(e) { alert('오류: ' + e.message); });
+}
+
+// ── FOSTER 신청자 목록 로드 (기관 대시보드) ──
+function loadFosterList() {
+  var listEl = document.getElementById('org-fosterlist');
+  if (!listEl) return;
+
+  db.collection('fosters')
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(function(snap) {
+      if (snap.empty) {
+        listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">아직 신청자가 없어요 🏠</div>';
+        return;
+      }
+      listEl.innerHTML = snap.docs.map(function(doc) {
+        var f = doc.data();
+        var stColor = f.status === 'approved' ? '#2D9E6B' : '#FF8C00';
+        var stBg    = f.status === 'approved' ? '#E8F7F0' : '#FFF5E6';
+        var stLabel = f.status === 'approved' ? '승인' : '검토중';
+        return '<div style="background:#fff;border-radius:12px;padding:12px 13px;margin-bottom:8px;border:1px solid #E8E0D8;display:flex;align-items:center;gap:10px;">' +
+          '<div style="width:38px;height:38px;border-radius:10px;background:#FFF5E6;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🏠</div>' +
+          '<div style="flex:1;"><div style="font-weight:700;font-size:13px;">' + (f.name||'') + '</div>' +
+          '<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">' + (f.city||'') + ' · ' + (f.homeType||'') + '</div>' +
+          '<div style="font-size:11px;color:#9CA3AF;">' + (f.email||'') + ' · 반려동물: ' + (f.pets||'없음') + '</div></div>' +
+          '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">' +
+          '<span style="font-size:11px;padding:3px 9px;border-radius:9px;font-weight:700;background:' + stBg + ';color:' + stColor + ';">' + stLabel + '</span>' +
+          (f.status !== 'approved' ? '<button onclick="approveFoster(\'' + doc.id + '\')" style="font-size:10px;padding:3px 8px;border-radius:8px;background:var(--gr);color:#fff;border:none;cursor:pointer;font-family:inherit;">승인</button>' : '') +
+          '</div></div>';
+      }).join('');
+    });
+}
+
+// ── FOSTER 승인 ──
+function approveFoster(id) {
+  db.collection('fosters').doc(id).update({ status: 'approved' })
+    .then(function() { alert('임시보호 신청이 승인되었습니다! 🏠'); })
+    .catch(function(e) { alert('오류: ' + e.message); });
+}
+
+// loadOrgDogs 호출 시 foster도 같이 로드 (기존 override 업데이트)
+var _origLoad2 = loadOrgDogs;
+loadOrgDogs = function(email) {
+  _origLoad2(email);
+  loadFosterList();
+};
