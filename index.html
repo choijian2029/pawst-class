@@ -1,215 +1,415 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-  <title>PAWST CLASS</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>PAWST CLASS</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="w" id="app">
 
-<div class="container">
+<!-- ═══ SPLASH ═══ -->
+<div class="sc on" id="s-splash">
+  <div class="splash-hero">
+    <div class="splash-blob"></div>
+    <!-- Language Toggle -->
+    <div class="lang-toggle" id="lang-btn" onclick="togLang()">ENG</div>
+    <div class="splash-emoji">🛫</div>
+    <div class="splash-dogs">
+      <div class="dog-badge">🐶</div>
+      <div class="dog-badge">🐕</div>
+      <div class="dog-badge">🐩</div>
+    </div>
+    <div class="splash-logo">PAWST <span class="or">CLASS</span></div>
+    <div class="splash-sub" data-ko="한국 구조견 해외 입양 이동봉사 플랫폼" data-en="Korean Rescue Dog Flight Volunteer Platform">한국 구조견 해외 입양 이동봉사 플랫폼</div>
+  </div>
+  <div class="splash-body">
+    <p class="splash-tagline" data-ko="한국 구조견의 미국 입양 여정에<br>당신의 좌석을 나눠주세요 🐾" data-en="Give a rescue dog your seat.<br>They'll give you their whole heart 🐾">한국 구조견의 미국 입양 여정에<br>당신의 좌석을 나눠주세요 🐾</p>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-n">2,847</div><div class="stat-l" data-ko="이동 완료" data-en="Completed">이동 완료</div></div>
+      <div class="stat-box"><div class="stat-n">1,203</div><div class="stat-l" data-ko="봉사자" data-en="Volunteers">봉사자</div></div>
+      <div class="stat-box"><div class="stat-n">3</div><div class="stat-l" data-ko="협력 단체" data-en="Partners">협력 단체</div></div>
+    </div>
+    <div class="partner-row">
+      <div class="partner-wrap"><div class="partner-icon" style="background:#FFF0EB;border-color:#FFD0B5;">🐾</div><div class="partner-label">K-Pups</div></div>
+      <div class="partner-wrap"><div class="partner-icon" style="background:#EFF6FF;border-color:#BFDBFE;">🐕</div><div class="partner-label">Adopt Me</div></div>
+      <div class="partner-wrap"><div class="partner-icon" style="background:#F5F3FF;border-color:#DDD6FE;">🏠</div><div class="partner-label">감자네</div></div>
+    </div>
+    <button class="btn-pr" onclick="goOb()" data-ko="✈️ 봉사자로 시작하기" data-en="✈️ Become a Volunteer">✈️ 봉사자로 시작하기</button>
+    <button class="btn-sec" onclick="goAdmin()" data-ko="🏥 단체 관리자 로그인" data-en="🏥 Organization Login">🏥 단체 관리자 로그인</button>
+    <button class="btn-ghost" onclick="goOb()" data-ko="❓ 이동봉사가 뭔가요?" data-en="❓ What is flight volunteering?">❓ 이동봉사가 뭔가요?</button>
+  </div>
+</div>
 
-  <!-- HOME 섹션 -->
-  <div id="section-home">
-    <h1>PAWST CLASS 🐾</h1>
-    <p>Korean rescue dogs need your seat.</p>
-    <p>Flying ICN to ATL? Help a dog find its forever home.</p>
-    <br>
-    <button onclick="showSection('register')">I want to help ✈️</button>
-    <br><br>
+<!-- ═══ ONBOARDING ═══ -->
+<div class="sc" id="s-ob">
+  <div class="ob-top">
+    <button onclick="bkOb()" class="ob-back">←</button>
+    <div id="ob-dots"></div>
+    <button onclick="goHome()" class="ob-skip" data-ko="건너뛰기" data-en="Skip">건너뛰기</button>
+  </div>
+  <div id="ob-body" style="flex:1;display:flex;flex-direction:column;"></div>
+  <div id="ob-nav" style="padding:14px 20px 24px;flex-shrink:0;"></div>
+</div>
 
-<h2>Flight Status 📋</h2>
+<!-- ═══ MAIN APP ═══ -->
+<div class="sc" id="s-main">
+
+  <!-- HOME TAB -->
+  <div class="bd" id="t-home">
+    <div class="top-bar">
+      <div>
+        <div class="top-greet" data-ko="안녕하세요 👋" data-en="Hello 👋">안녕하세요 👋</div>
+        <div class="top-name">Jian Choi</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-sm" onclick="goOb()" data-ko="❓ 봉사 안내" data-en="❓ Guide">❓ 봉사 안내</button>
+        <!-- Language Toggle (main) -->
+        <div class="lang-toggle lang-sm" onclick="togLang()" id="lang-btn2">ENG</div>
+        <div class="avatar">🧑</div>
+      </div>
+    </div>
+
+    <div class="hero-card">
+      <div class="hero-bg-icon">✈️</div>
+      <div class="hero-eyebrow" data-ko="오늘 미국행 비행기 타시나요?" data-en="Flying to the U.S. today?">오늘 미국행 비행기 타시나요?</div>
+      <div class="hero-title" data-ko="이동봉사 매칭 중" data-en="Flight Matching Open">이동봉사 매칭 중</div>
+      <p class="hero-desc" data-ko="구조견과 함께 탑승해 목적지에서 인계해주세요.<br>서류·비용 모두 단체가 지원합니다." data-en="Bring a rescue dog on your flight.<br>Documents & costs fully covered by partner org.">구조견과 함께 탑승해 목적지에서 인계해주세요.<br>서류·비용 모두 단체가 지원합니다.</p>
+      <div style="display:flex;gap:8px;">
+        <button onclick="setTab('register')" class="hero-cta" data-ko="항공편 등록 →" data-en="Register Flight →">항공편 등록 →</button>
+        <button onclick="goOb()" class="hero-cta-ghost" data-ko="자세히 보기" data-en="Learn more">자세히 보기</button>
+      </div>
+    </div>
+
+    <div class="section-head" data-ko="🚨 긴급 매칭 필요" data-en="🚨 Urgent Match Needed">🚨 긴급 매칭 필요 <span class="badge">2</span></div>
+
+    <div class="card flight-card" onclick="opFM(0)">
+      <div class="flight-top">
+        <div class="flight-info">
+          <div class="flight-icon" style="background:#FFF0EB;">🐾</div>
+          <div>
+            <div class="flight-route">ICN ✈ ATL</div>
+            <div class="flight-meta">K-Pups for Love · <span data-ko="3월 8일" data-en="Mar 8">3월 8일</span></div>
+          </div>
+        </div>
+        <span class="tag-urgent" data-ko="⚡ 긴급" data-en="⚡ Urgent">⚡ 긴급</span>
+      </div>
+      <div class="dog-tags">
+        <span class="dog-tag">🐶 뽀삐 · 말티즈</span>
+        <span class="dog-tag">🐕 코코 · 치와와</span>
+      </div>
+      <div class="flight-note" data-ko="💰 비용 전액 지원 · 서류 단체 준비" data-en="💰 All costs covered · Documents by org">💰 비용 전액 지원 · 서류 단체 준비</div>
+      <button class="btn-pr" onclick="event.stopPropagation();opFM(0)" style="padding:10px;font-size:13px;" data-ko="신청하기" data-en="Apply Now">신청하기</button>
+    </div>
+
+    <div class="card flight-card" onclick="opFM(1)">
+      <div class="flight-top">
+        <div class="flight-info">
+          <div class="flight-icon" style="background:#EFF6FF;">🐕</div>
+          <div>
+            <div class="flight-route">ICN ✈ ATL</div>
+            <div class="flight-meta">Adopt Me Korea · <span data-ko="3월 15일" data-en="Mar 15">3월 15일</span></div>
+          </div>
+        </div>
+        <span class="tag-open" data-ko="✅ 모집중" data-en="✅ Open">✅ 모집중</span>
+      </div>
+      <div class="dog-tags"><span class="dog-tag">🐩 루시 · 푸들</span></div>
+      <div class="flight-note" data-ko="💰 비용 전액 지원 · 서류 단체 준비" data-en="💰 All costs covered · Documents by org">💰 비용 전액 지원 · 서류 단체 준비</div>
+      <button class="btn-pr" onclick="event.stopPropagation();opFM(1)" style="padding:10px;font-size:13px;background:var(--tx);" data-ko="신청하기" data-en="Apply Now">신청하기</button>
+    </div>
+
+    <div class="section-head" data-ko="🐾 이동 대기 아이들" data-en="🐾 Dogs Waiting for a Flight">🐾 이동 대기 아이들</div>
+    <div class="dog-grid">
+      <div class="dc"><div class="dt" style="background:#FFF0EB;">🐶<span class="du" data-ko="긴급" data-en="Urgent">긴급</span></div><div class="di"><div class="dn">뽀삐</div><div class="db">말티즈 · 2.1kg</div><div class="dr">→ ATL</div><div class="do">K-Pups</div></div></div>
+      <div class="dc"><div class="dt" style="background:#EFF6FF;">🐕</div><div class="di"><div class="dn">코코</div><div class="db">치와와 · 1.5kg</div><div class="dr">→ ATL</div><div class="do">K-Pups</div></div></div>
+      <div class="dc"><div class="dt" style="background:#ECFDF5;">🐩</div><div class="di"><div class="dn">루시</div><div class="db">푸들 · 3.2kg</div><div class="dr">→ ATL</div><div class="do">Adopt Me</div></div></div>
+      <div class="dc"><div class="dt" style="background:#F5F3FF;">🐕‍🦺<span class="du" data-ko="긴급" data-en="Urgent">긴급</span></div><div class="di"><div class="dn">맥스</div><div class="db">비글 · 4.0kg</div><div class="dr">→ ATL</div><div class="do">감자네</div></div></div>
+    </div>
+    <div style="height:20px;"></div>
+  </div>
+
+  <!-- REGISTER TAB -->
+  <div class="bd" id="t-register" style="display:none;">
+    <div class="page-header">
+      <div class="page-step" data-ko="STEP 1 / 2" data-en="STEP 1 / 2">STEP 1 / 2</div>
+      <div class="page-title" data-ko="항공편 등록 ✈️" data-en="Register Your Flight ✈️">항공편 등록 ✈️</div>
+    </div>
+    <div class="card">
+      <label class="fl" data-ko="출발 공항" data-en="Departure Airport">출발 공항</label>
+      <input type="text" class="fi" value="인천국제공항 (ICN)" readonly style="background:#f0ede9;color:#888;cursor:not-allowed;">
+
+      <label class="fl" data-ko="도착 공항" data-en="Arrival Airport">도착 공항</label>
+      <input type="text" class="fi" value="ATL — Atlanta (Hartsfield-Jackson)" readonly style="background:#f0ede9;color:#888;cursor:not-allowed;">
+      <div class="fi-note" data-ko="✅ K-Pups for Love 확인: ATL이 주요 도착지입니다" data-en="✅ K-Pups for Love confirmed: ATL is the primary destination">✅ K-Pups for Love 확인: ATL이 주요 도착지입니다</div>
+
+      <label class="fl" data-ko="항공사" data-en="Airline">항공사</label>
+      <div class="chip-row" id="airline-chips">
+        <button type="button" class="chip on" onclick="togChip(this,'KE')">대한항공 KE</button>
+        <button type="button" class="chip" onclick="togChip(this,'OZ')">아시아나 OZ</button>
+        <button type="button" class="chip" onclick="togChip(this,'RS')">에어프레미아 RS</button>
+      </div>
+      <div class="fi-note" data-ko="✅ ICN→ATL 직항 허용 항공사 (K-Pups 확인)" data-en="✅ Airlines allowing in-cabin pet transport ICN→ATL">✅ ICN→ATL 직항 허용 항공사 (K-Pups 확인)</div>
+
+      <div class="two-col">
+        <div><label class="fl" data-ko="출발 날짜" data-en="Flight Date">출발 날짜</label><input type="date" class="fi"></div>
+        <div><label class="fl" data-ko="항공편 번호" data-en="Flight Number">항공편 번호</label><input type="text" id="fno" placeholder="KE 035" class="fi"></div>
+      </div>
+
+      <label class="fl" data-ko="이름 (영문)" data-en="Full Name (English)">이름 (영문)</label>
+      <input type="text" placeholder="Jian Choi" class="fi">
+
+      <label class="fl" data-ko="연락처" data-en="Phone Number">연락처</label>
+      <input type="tel" placeholder="010-0000-0000" class="fi">
+
+      <label class="fl" data-ko="카카오톡 ID" data-en="KakaoTalk ID">카카오톡 ID</label>
+      <div class="input-icon-wrap">
+        <span class="input-icon">💬</span>
+        <input type="text" placeholder="카카오톡 ID" class="fi" style="padding-left:36px;">
+      </div>
+
+      <label class="fl" data-ko="국적 / 체류 자격" data-en="Nationality / Residency">국적 / 체류 자격</label>
+      <input type="text" placeholder="e.g. Korean, US Citizen, PR" class="fi">
+    </div>
+
+    <div class="card" id="pvcard">
+      <div class="pv-title">🔒 <span data-ko="개인정보 수집·이용 동의" data-en="Privacy Agreement">개인정보 수집·이용 동의</span> <span class="req" data-ko="(필수)" data-en="(Required)">(필수)</span></div>
+      <div class="pv-box">
+        <div>· <b data-ko="수집 항목" data-en="Items collected">수집 항목</b>: <span data-ko="이름, 연락처, 카카오ID, 항공편 정보" data-en="Name, phone, KakaoID, flight info">이름, 연락처, 카카오ID, 항공편 정보</span></div>
+        <div>· <b data-ko="수집 목적" data-en="Purpose">수집 목적</b>: <span data-ko="이동봉사 매칭 및 긴급 연락" data-en="Volunteer matching & emergency contact">이동봉사 매칭 및 긴급 연락</span></div>
+        <div>· <b data-ko="보유 기간" data-en="Retention">보유 기간</b>: <span data-ko="봉사 완료 후 1년" data-en="1 year after volunteer service">봉사 완료 후 1년</span></div>
+        <div>· <b data-ko="제3자 제공" data-en="Third parties">제3자 제공</b>: <span data-ko="협력 구조단체에 한해 공유" data-en="Shared only with matched rescue orgs">협력 구조단체에 한해 공유</span></div>
+      </div>
+      <div class="pv-row">
+        <button onclick="opPrv()" class="pv-link" data-ko="전문 보기 ›" data-en="View full policy ›">전문 보기 ›</button>
+        <div onclick="togPv()" class="pv-check-row">
+          <div class="cx" id="pvx"><span id="pvt" style="display:none;color:#fff;font-size:13px;font-weight:700;">✓</span></div>
+          <span class="pv-label" id="pvl" data-ko="동의합니다" data-en="I agree">동의합니다</span>
+        </div>
+      </div>
+    </div>
+    <button class="btn-pr" id="rbtn" onclick="doReg()" style="opacity:.4;cursor:not-allowed;margin-bottom:20px;" data-ko="등록 완료하기" data-en="Complete Registration">등록 완료하기</button>
+  </div>
+
+  <!-- ORGS TAB -->
+  <div class="bd" id="t-orgs" style="display:none;">
+    <div class="page-title" style="margin-bottom:14px;" data-ko="협력 단체 🏥" data-en="Partner Organizations 🏥">협력 단체 🏥</div>
+    <div class="card org-card">
+      <div class="org-top">
+        <div class="org-icon" style="background:#FFF0EB;">🐾</div>
+        <div style="flex:1;">
+          <div class="org-name">K-Pups for Love</div>
+          <div class="org-handle" style="color:#E05A2B;">@kpupsforlove</div>
+          <div class="org-desc" data-ko="미국 애틀랜타 기반 한국 구조견 입양 단체" data-en="Atlanta, GA · Korean rescue dogs to U.S. families">미국 애틀랜타 기반 한국 구조견 입양 단체</div>
+        </div>
+        <a href="https://kpupsforlove.org" target="_blank" class="org-link" data-ko="방문 ›" data-en="Visit ›">방문 ›</a>
+      </div>
+      <div class="org-dogs">
+        <div class="org-dogs-label" data-ko="대기 중인 강아지" data-en="Waiting dogs">대기 중인 강아지</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;">
+          <span class="dog-tag" style="background:#FFF0EB;">⚡ 뽀삐</span>
+          <span class="dog-tag" style="background:#FFF0EB;">코코</span>
+        </div>
+      </div>
+    </div>
+    <div class="card org-card">
+      <div class="org-top">
+        <div class="org-icon" style="background:#EFF6FF;">🐕</div>
+        <div style="flex:1;">
+          <div class="org-name">Adopt Me Korea</div>
+          <div class="org-handle" style="color:#2563EB;">@adoptmekr</div>
+          <div class="org-desc" data-ko="한국-미국 연결 구조견 입양 플랫폼" data-en="Toronto, Canada · Korean dog adoption platform">한국-미국 연결 구조견 입양 플랫폼</div>
+        </div>
+        <a href="https://adoptmekr.org" target="_blank" class="org-link" data-ko="방문 ›" data-en="Visit ›">방문 ›</a>
+      </div>
+      <div class="org-dogs">
+        <div class="org-dogs-label" data-ko="대기 중인 강아지" data-en="Waiting dogs">대기 중인 강아지</div>
+        <div style="display:flex;gap:7px;">
+          <span class="dog-tag" style="background:#EFF6FF;">루시</span>
+        </div>
+      </div>
+    </div>
+    <div class="card org-card">
+      <div class="org-top">
+        <div class="org-icon" style="background:#F5F3FF;">🏠</div>
+        <div style="flex:1;">
+          <div class="org-name">감자네 하우스</div>
+          <div class="org-handle" style="color:#7C3AED;">@gamjane_house</div>
+          <div class="org-desc" data-ko="서울 소형견 구조·임시보호 하우스" data-en="Seoul, Korea · Small dog rescue & foster house">서울 소형견 구조·임시보호 하우스</div>
+        </div>
+        <a href="https://instagram.com/gamjane_supportlist" target="_blank" class="org-link" data-ko="방문 ›" data-en="Visit ›">방문 ›</a>
+      </div>
+      <div class="org-dogs">
+        <div class="org-dogs-label" data-ko="대기 중인 강아지" data-en="Waiting dogs">대기 중인 강아지</div>
+        <div style="display:flex;gap:7px;">
+          <span class="dog-tag" style="background:#F5F3FF;">⚡ 맥스</span>
+        </div>
+      </div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-title" data-ko="📋 봉사 안내" data-en="📋 Volunteer Support">📋 봉사 안내</div>
+      <div class="info-box-body" data-ko="· 서류·케이지는 단체에서 준비<br>· 공항 픽업 및 인계 담당자 동행<br>· 이동비 전액 지원" data-en="· Crate & documents prepared by org<br>· Airport pickup & handoff coordinator<br>· All travel costs covered">· 서류·케이지는 단체에서 준비<br>· 공항 픽업 및 인계 담당자 동행<br>· 이동비 전액 지원</div>
+    </div>
+    <div style="height:20px;"></div>
+  </div>
+
+  <!-- REVIEWS TAB -->
+  <div class="bd" id="t-reviews" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="page-title" data-ko="후기 ⭐" data-en="Reviews ⭐">후기 ⭐</div>
+      <button class="btn-sm" onclick="togRF()" data-ko="✏️ 후기 작성" data-en="✏️ Write Review">✏️ 후기 작성</button>
+    </div>
+    <div id="rev-form" style="display:none;" class="card">
+      <div class="star-row">
+        <button class="star on" onclick="sStar(1)">★</button>
+        <button class="star on" onclick="sStar(2)">★</button>
+        <button class="star on" onclick="sStar(3)">★</button>
+        <button class="star on" onclick="sStar(4)">★</button>
+        <button class="star on" onclick="sStar(5)">★</button>
+      </div>
+      <input type="file" id="ph-inp" accept="image/*" style="display:none;" onchange="ldPh(event)">
+      <div id="ph-prev" style="display:none;position:relative;margin-bottom:10px;">
+        <img id="ph-img" style="width:100%;height:130px;object-fit:cover;border-radius:10px;">
+        <button onclick="rmPh()" class="ph-rm">✕</button>
+      </div>
+      <div id="ph-drop" onclick="document.getElementById('ph-inp').click()" class="ph-drop">
+        <div style="font-size:26px;">📷</div>
+        <div style="font-size:12px;color:var(--t2);margin-top:4px;" data-ko="사진 추가 (선택)" data-en="Add photo (optional)">사진 추가 (선택)</div>
+      </div>
+      <textarea id="rev-txt" class="fi" style="height:70px;resize:none;display:block;" data-ko-placeholder="이동봉사 경험을 공유해 주세요..." data-en-placeholder="Share your flight volunteer experience..." placeholder="이동봉사 경험을 공유해 주세요..."></textarea>
+      <div style="display:flex;gap:8px;margin-top:2px;">
+        <button class="btn-pr" onclick="subRev()" style="flex:1;padding:10px;font-size:13px;" data-ko="등록" data-en="Post">등록</button>
+        <button onclick="togRF()" class="btn-cancel" style="flex:1;" data-ko="취소" data-en="Cancel">취소</button>
+      </div>
+    </div>
+    <div id="gal" class="gallery"></div>
+    <div id="rev-list"></div>
+    <div style="height:20px;"></div>
+  </div>
+
+  <!-- FOSTER TAB -->
+  <div class="bd" id="t-foster" style="display:none;">
+    <div class="page-title" style="margin-bottom:6px;" data-ko="Foster Home 🏠" data-en="Foster Home 🏠">Foster Home 🏠</div>
+    <p style="font-size:13px;color:var(--t2);margin-bottom:16px;" data-ko="구조견이 새 가족을 찾기 전, 임시로 돌봐줄 수 있나요?" data-en="Can you provide a temporary home for a rescue dog before it finds its forever family?">구조견이 새 가족을 찾기 전, 임시로 돌봐줄 수 있나요?</p>
+
+    <div class="card" style="background:#FFF5E6;border-color:#FFD0A0;margin-bottom:12px;">
+      <div style="font-weight:700;color:var(--or);margin-bottom:6px;" data-ko="🐾 왜 임시보호가 필요한가요?" data-en="🐾 Why Foster?">🐾 왜 임시보호가 필요한가요?</div>
+      <p style="font-size:13px;color:var(--tx);line-height:1.75;" data-ko="미국에 임시보호 가정이 없으면 이동봉사자가 있어도 강아지가 올 수 없어요. 임시보호는 한국과 새 가족 사이의 다리 역할을 합니다." data-en="Without a foster home in the U.S., dogs cannot come over — even if a flight volunteer is ready. Fostering bridges the gap between Korea and a forever home.">미국에 임시보호 가정이 없으면 이동봉사자가 있어도 강아지가 올 수 없어요. 임시보호는 한국과 새 가족 사이의 다리 역할을 합니다.</p>
+    </div>
+
     <div class="card" style="margin-bottom:12px;">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div style="text-align:center; flex:1;">
-          <p style="font-size:11px; color:#9CA3AF;">STEP 1</p>
-          <p style="font-weight:700; font-size:13px; color:#FF8C00;">예약완료</p>
-        </div>
-        <p style="color:#E8E0D8;">→</p>
-        <div style="text-align:center; flex:1;">
-          <p style="font-size:11px; color:#9CA3AF;">STEP 2</p>
-          <p style="font-weight:700; font-size:13px; color:#9CA3AF;">매칭완료</p>
-        </div>
-        <p style="color:#E8E0D8;">→</p>
-        <div style="text-align:center; flex:1;">
-          <p style="font-size:11px; color:#9CA3AF;">STEP 3</p>
-          <p style="font-weight:700; font-size:13px; color:#9CA3AF;">이동완료</p>
-        </div>
-      </div>
-    </div>
-    <br>
-    <h2>How it works</h2>
-    <div class="card" style="text-align:left; margin-bottom:10px;">
-      <p>1. Register your flight from ICN to ATL</p>
-    </div>
-    <div class="card" style="text-align:left; margin-bottom:10px;">
-      <p>2. Get matched with a rescue dog</p>
-    </div>
-    <div class="card" style="text-align:left; margin-bottom:10px;">
-      <p>3. Pick up the dog at the airport</p>
-    </div>
-    <div class="card" style="text-align:left; margin-bottom:10px;">
-      <p>4. Hand over to the adoption family</p>
+      <div style="font-weight:700;margin-bottom:6px;">🎓 <span data-ko="학생 봉사 시간 인정" data-en="Student Volunteer Credit">학생 봉사 시간 인정</span></div>
+      <p style="font-size:13px;color:var(--t2);line-height:1.7;" data-ko="임시보호는 Millcreek HS PAWS Club 봉사 시간으로 인정될 수 있습니다. 자세한 내용은 PAWS Club 담당자에게 문의하세요." data-en="Fostering may qualify for volunteer hours through Millcreek HS PAWS Club. Ask your PAWS Club coordinator for details.">임시보호는 Millcreek HS PAWS Club 봉사 시간으로 인정될 수 있습니다. 자세한 내용은 PAWS Club 담당자에게 문의하세요.</p>
     </div>
 
-    <h2>Dogs Waiting for a Flight 🐶</h2>
-    <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; justify-content:center;">
-      <div class="card" style="width:100px;">
-        <p style="font-weight:700; color:#333;">Bomi</p>
-        <p>Maltese</p>
-        <p>2.1kg</p>
-        <p style="color:#FF8C00; font-weight:700;">Urgent</p>
+    <div class="card" style="margin-bottom:12px;">
+      <div style="font-weight:700;margin-bottom:10px;" data-ko="임시보호란 어떤 일인가요?" data-en="What fostering involves">임시보호란 어떤 일인가요?</div>
+      <div class="foster-steps">
+        <div class="foster-step"><span class="foster-num">1</span><span data-ko="2~4주간 안전한 공간 제공" data-en="Provide a safe home for 2–4 weeks">2~4주간 안전한 공간 제공</span></div>
+        <div class="foster-step"><span class="foster-num">2</span><span data-ko="필요 시 동물병원 동행" data-en="Attend vet appointments if needed">필요 시 동물병원 동행</span></div>
+        <div class="foster-step"><span class="foster-num">3</span><span data-ko="입양 가족에게 인계" data-en="Hand off to the adoption family when ready">입양 가족에게 인계</span></div>
       </div>
-      <div class="card" style="width:100px;">
-        <p style="font-weight:700; color:#333;">Coco</p>
-        <p>Chihuahua</p>
-        <p>1.5kg</p>
-        <p style="color:#FF8C00; font-weight:700;">Urgent</p>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:12px;" data-ko="임시보호 신청 🏠" data-en="Apply to Foster 🏠">임시보호 신청 🏠</div>
+      <label class="fl" data-ko="이름 (영문)" data-en="Full Name">이름 (영문)</label>
+      <input type="text" placeholder="Jian Choi" class="fi">
+      <label class="fl" data-ko="이메일" data-en="Email">이메일</label>
+      <input type="email" placeholder="pawstclass.1@gmail.com" class="fi">
+      <label class="fl" data-ko="거주 도시 / 주" data-en="City / State">거주 도시 / 주</label>
+      <input type="text" placeholder="Hoschton, GA" class="fi">
+      <label class="fl" data-ko="주거 형태" data-en="Home type">주거 형태</label>
+      <select class="fi">
+        <option data-ko="마당 있는 주택" data-en="House with yard">마당 있는 주택</option>
+        <option data-ko="아파트 / 콘도" data-en="Apartment / Condo">아파트 / 콘도</option>
+        <option data-ko="마당 없는 주택" data-en="House without yard">마당 없는 주택</option>
+      </select>
+      <label class="fl" data-ko="다른 반려동물이 있나요?" data-en="Other pets at home?">다른 반려동물이 있나요?</label>
+      <select class="fi">
+        <option data-ko="없음" data-en="None">없음</option>
+        <option data-ko="강아지" data-en="Dogs">강아지</option>
+        <option data-ko="고양이" data-en="Cats">고양이</option>
+        <option data-ko="강아지 + 고양이" data-en="Both dogs and cats">강아지 + 고양이</option>
+        <option data-ko="기타" data-en="Other">기타</option>
+      </select>
+      <button class="btn-pr" onclick="alert(curLang==='ko'?'신청이 완료되었습니다! 곧 연락드릴게요 🐾':'Application submitted! We\'ll be in touch soon 🐾')" style="margin-top:4px;" data-ko="신청서 제출 🏠" data-en="Submit Application 🏠">신청서 제출 🏠</button>
+    </div>
+    <div style="height:20px;"></div>
+  </div>
+
+  <!-- ADMIN (splash에서 접근) -->
+  <div id="t-admin" style="display:none;flex-direction:column;flex:1;">
+    <div class="adm-header">
+      <div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:3px;">K-Pups for Love</div>
+      <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:14px;" data-ko="관리자 대시보드" data-en="Admin Dashboard">관리자 대시보드</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div class="adm-stat" style="background:var(--orL);"><div style="color:var(--or);font-size:20px;font-weight:800;">2</div><div style="color:var(--or);font-size:10px;opacity:.8;" data-ko="매칭 대기" data-en="Pending">매칭 대기</div></div>
+        <div class="adm-stat" style="background:var(--grL);"><div style="color:var(--gr);font-size:20px;font-weight:800;">3</div><div style="color:var(--gr);font-size:10px;opacity:.8;" data-ko="이동 완료" data-en="Completed">이동 완료</div></div>
+        <div class="adm-stat" style="background:#EFF6FF;"><div style="color:var(--sk);font-size:20px;font-weight:800;">5</div><div style="color:var(--sk);font-size:10px;opacity:.8;" data-ko="활성 봉사자" data-en="Volunteers">활성 봉사자</div></div>
       </div>
-      <div class="card" style="width:100px;">
-        <p style="font-weight:700; color:#333;">Lucy</p>
-        <p>Poodle</p>
-        <p>3.2kg</p>
-        <p style="color:gray;">Waiting</p>
-      </div>
+    </div>
+    <div style="overflow-y:auto;padding:14px;flex:1;" id="adm-body">
+      <div style="font-weight:700;font-size:14px;margin-bottom:10px;" data-ko="등록 강아지" data-en="Registered Dogs">등록 강아지</div>
+      <div id="adm-dogs"></div>
+      <div style="font-weight:700;font-size:14px;margin:14px 0 10px;" data-ko="매칭 현황" data-en="Match Status">매칭 현황</div>
+      <div id="adm-match"></div>
+      <div style="height:20px;"></div>
     </div>
   </div>
 
-  <!-- REGISTER 섹션 -->
-  <div id="section-register" style="display:none; text-align:left;">
-    <h2>Register Your Flight ✈️</h2>
-    <br>
-    <label>Full Name (English)</label><br>
-    <input type="text" placeholder="Jian Choi"><br><br>
+  <!-- BOTTOM NAV -->
+  <nav class="bnav" id="main-nav">
+    <button class="ni on" onclick="setTab('home')"><span class="em">🏠</span><span data-ko="홈" data-en="Home">홈</span></button>
+    <button class="ni" onclick="setTab('register')"><span class="em">✈️</span><span data-ko="등록" data-en="Register">등록</span></button>
+    <button class="ni" onclick="setTab('orgs')"><span class="em">🏥</span><span data-ko="단체" data-en="Orgs">단체</span></button>
+    <button class="ni" onclick="setTab('reviews')"><span class="em">⭐</span><span data-ko="후기" data-en="Reviews">후기</span></button>
+    <button class="ni" onclick="setTab('foster')"><span class="em">🏠</span><span data-ko="임보" data-en="Foster">임보</span></button>
+  </nav>
+</div>
 
-    <label>Reservation Number</label><br>
-    <input type="text" placeholder="ABC123456"><br><br>
+<!-- ═══ MODALS ═══ -->
+<div class="mb" id="fm"><div class="mo"><div class="mh"></div><div id="fm-body"></div></div></div>
 
-    <label>Phone Number</label><br>
-    <input type="tel" placeholder="010-0000-0000"><br><br>
+<div class="mb" id="pm">
+  <div class="mo">
+    <div class="mh"></div>
+    <div class="modal-title" data-ko="🔒 개인정보처리방침" data-en="🔒 Privacy Policy">🔒 개인정보처리방침</div>
+    <pre class="modal-pre" id="prv-text">■ 수집 항목
+· 필수: 이름, 연락처, 카카오ID, 항공편 정보
+· 선택: 봉사 경험 횟수
 
-    <label>Address</label><br>
-    <input type="text" placeholder="123 Main St, Atlanta, GA"><br><br>
+■ 수집·이용 목적
+· 이동봉사 매칭 및 단체 연결
+· 긴급 연락 및 인증서 발급
 
-    <label>Nationality / Residency Status</label><br>
-    <input type="text" placeholder="e.g. Korean, US Citizen, PR"><br><br>
+■ 보유 및 이용 기간
+· 봉사 완료 후 1년간 보관
 
-    <label>Flight Date</label><br>
-    <input type="date"><br><br>
+■ 제3자 제공
+· 매칭된 협력 구조단체에 한해 공유
 
-    <label>Arrival Airport</label><br>
-    <input type="text" value="ATL — Atlanta (Fixed)"
-    style="background:#f0f0f0; color:#888;" readonly><br><br>
-
-    <label>Airline</label><br>
-    <div style="display:flex; gap:8px; margin:8px 0 16px;">
-      <button type="button" onclick="selAir(this)" 
-      style="flex:1; padding:10px; border-radius:12px; background:white; color:#333; border:1.5px solid #E8E0D8; font-size:13px;">KE</button>
-      <button type="button" onclick="selAir(this)" 
-      style="flex:1; padding:10px; border-radius:12px; background:white; color:#333; border:1.5px solid #E8E0D8; font-size:13px;">OZ</button>
-      <button type="button" onclick="selAir(this)" 
-      style="flex:1; padding:10px; border-radius:12px; background:white; color:#333; border:1.5px solid #E8E0D8; font-size:13px;">RS</button>
-    </div>
-
-    <label>Flight Number</label><br>
-    <input type="text" placeholder="KE 035"><br><br>
-
-    <button style="width:100%;" onclick="alert('Registration submitted! We will contact you soon 🐾')">
-      Submit ✈️
-    </button>
-  </div>
-
-  <!-- ORGS 섹션 -->
-  <div id="section-orgs" style="display:none;">
-    <h2>Partner Organizations 🏥</h2>
-    <br>
-    <div class="card" style="margin-bottom:12px; text-align:left;">
-      <p style="font-weight:700; color:#333; font-size:15px;">K-Pups for Love</p>
-      <p>Atlanta, GA</p>
-      <p>Korean rescue dogs to U.S. families</p>
-      <a href="https://kpupsforlove.org/" target="_blank" style="color:#FF8C00;">Visit Website →</a>
-    </div>
-    <div class="card" style="margin-bottom:12px; text-align:left;">
-      <p style="font-weight:700; color:#333; font-size:15px;">Adopt Me Korea</p>
-      <p>Toronto, Canada</p>
-      <p>Connecting Korean dogs with forever homes</p>
-      <a href="https://adoptmekr.org/" target="_blank" style="color:#FF8C00;">Visit Website →</a>
-    </div>
-    <div class="card" style="margin-bottom:12px; text-align:left;">
-      <p style="font-weight:700; color:#333; font-size:15px;">Gamjane House</p>
-      <p>Korea</p>
-      <p>Rescue and rehabilitation center</p>
-      <a href="https://www.instagram.com/gamjane_supportlist/" target="_blank" style="color:#FF8C00;">Instagram →</a>
-    </div>
-  </div>
-
-  <!-- REVIEWS 섹션 -->
-  <div id="section-reviews" style="display:none;">
-    <h2>Reviews ⭐</h2>
-    <br>
-    <div class="card" style="margin-bottom:12px; text-align:left;">
-      <p style="font-weight:700; color:#333;">Jimin K.</p>
-      <p style="color:#F59E0B;">★★★★★</p>
-      <p>ICN → ATL · Feb 2026</p>
-      <p style="margin-top:8px;">It was such a meaningful experience. Bomi was so well-behaved on the flight!</p>
-    </div>
-    <div class="card" style="margin-bottom:12px; text-align:left;">
-      <p style="font-weight:700; color:#333;">Sarah L.</p>
-      <p style="color:#F59E0B;">★★★★★</p>
-      <p>ICN → ATL · Jan 2026</p>
-      <p style="margin-top:8px;">The organization prepared everything. I just had to show up!</p>
-    </div>
-  </div>
-<!-- FOSTER HOME 섹션 -->
-  <div id="section-foster" style="display:none;">
-    <h2>Foster Home 🏠</h2>
-    <p style="margin-bottom:16px;">Can you provide a temporary home for a rescue dog?</p>
-
-    <div class="card" style="margin-bottom:12px; text-align:left;
-    background:#FFF5E6;">
-      <p style="font-weight:700; color:#FF8C00;">Why Foster?</p>
-      <p style="margin-top:6px;">Without a foster home, dogs cannot come to the U.S. even if a volunteer is ready to fly.</p>
-    </div>
-
-    <div class="card" style="margin-bottom:12px; text-align:left;">
-      <p style="font-weight:700; color:#333;">🎓 Student Volunteer Credit</p>
-      <p style="margin-top:6px;">Fostering may qualify for volunteer hours at Millcreek HS PAWS Club!</p>
-    </div>
-
-    <div class="card" style="margin-bottom:16px; text-align:left;">
-      <label>Your Name</label><br>
-      <input type="text" placeholder="Jian Choi"><br><br>
-      <label>Email</label><br>
-      <input type="email" placeholder="your@email.com"><br><br>
-      <label>City / State</label><br>
-      <input type="text" placeholder="Atlanta, GA"><br><br>
-      <button style="width:100%;" onclick="alert('Thank you! We will contact you soon 🐾')">
-        Apply to Foster 🏠
-      </button>
+■ 정보주체 권리
+· 열람·정정·삭제·처리정지 요청 가능
+· 문의: pawstclass.1@gmail.com</pre>
+    <div style="display:flex;gap:8px;">
+      <button onclick="pvAgree()" style="flex:2;background:var(--gr);color:#fff;border:none;padding:13px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;" data-ko="✓ 동의하고 닫기" data-en="✓ Agree & Close">✓ 동의하고 닫기</button>
+      <button onclick="clMo('pm')" class="btn-cancel" style="flex:1;" data-ko="닫기" data-en="Close">닫기</button>
     </div>
   </div>
 </div>
 
-<!-- 하단 탭 바 -->
-<nav class="bottom-nav">
-  <button class="nav-item active" id="nav-home" onclick="showSection('home')">
-    🏠<br>Home
-  </button>
-  <button class="nav-item" id="nav-register" onclick="showSection('register')">
-    ✈️<br>Register
-  </button>
-  <button class="nav-item" id="nav-orgs" onclick="showSection('orgs')">
-    🏥<br>Orgs
-  </button>
-  <button class="nav-item" id="nav-reviews" onclick="showSection('reviews')">
-    ⭐<br>Reviews
-  </button>
-  <button class="nav-item" id="nav-foster" onclick="showSection('foster')">
-    🏠<br>Foster
-  </button>
-</nav>
+<div class="mb" id="sm">
+  <div class="mo" style="text-align:center;padding:30px 20px 34px;">
+    <div style="font-size:54px;margin-bottom:12px;">🎉</div>
+    <div style="font-size:22px;font-weight:800;margin-bottom:8px;" data-ko="신청 완료!" data-en="Application Submitted!">신청 완료!</div>
+    <p style="font-size:14px;color:var(--t2);line-height:1.85;margin-bottom:22px;" data-ko="24시간 내에 단체에서 연락드립니다.<br>함께해 주셔서 진심으로 감사드려요 🐾" data-en="The organization will contact you within 24 hours.<br>Thank you for giving a rescue dog a new journey 🐾">24시간 내에 단체에서 연락드립니다.<br>함께해 주셔서 진심으로 감사드려요 🐾</p>
+    <button class="btn-pr" onclick="clMo('sm')" data-ko="확인" data-en="Got it">확인</button>
+  </div>
+</div>
 
+</div>
 <script src="app.js"></script>
-
 </body>
 </html>
