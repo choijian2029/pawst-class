@@ -218,7 +218,7 @@ function obTo(i) { obI = i; rOb(); }
 
 // ── TAB SWITCHING ──
 function setTab(t) {
-  ['home','register','orgs','reviews','foster'].forEach(function(id) {
+  ['home','register','orgs','reviews','foster','calendar'].forEach(function(id) {
     var el = document.getElementById('t-' + id);
     if (el) el.style.display = 'none';
   });
@@ -228,7 +228,7 @@ function setTab(t) {
   if (el) el.style.display = 'block';
 
   document.querySelectorAll('.ni').forEach(function(b) { b.classList.remove('on'); });
-  var tabs = ['home','register','orgs','reviews','foster'];
+  var tabs = ['home','register','orgs','reviews','calendar'];
   var idx = tabs.indexOf(t);
   var nb = document.querySelectorAll('.ni');
   if (nb[idx]) nb[idx].classList.add('on');
@@ -896,3 +896,394 @@ loadOrgDogs = function(email) {
   _origLoad2(email);
   loadFosterList();
 };
+
+// ══════════════════════════════
+// v1.8 · CALENDAR + REMINDERS
+// ══════════════════════════════
+
+var calYear, calMonth, calEvents = [], calSelected = null;
+
+// ── 캘린더 초기화 ──
+function initCal() {
+  var now = new Date();
+  calYear  = now.getFullYear();
+  calMonth = now.getMonth();
+  loadCalEvents();
+}
+
+// ── Firestore에서 봉사 일정 불러오기 ──
+function loadCalEvents() {
+  calEvents = [];
+  // 봉사자 본인 항공편 (로컬 스토리지 임시 — 로그인 없는 봉사자용)
+  var saved = localStorage.getItem('pawst_flight');
+  if (saved) {
+    try {
+      var f = JSON.parse(saved);
+      if (f.flightDate) calEvents.push({ date: f.flightDate, type: 'flight', label: '✈️ ' + (f.airline||'') + ' ' + (f.flightNo||''), org: f.org||'' });
+    } catch(e) {}
+  }
+  // Firestore에서 매칭된 봉사 일정
+  db.collection('volunteers')
+    .where('status', 'in', ['booked','matched'])
+    .get()
+    .then(function(snap) {
+      snap.forEach(function(doc) {
+        var v = doc.data();
+        if (v.flightDate) {
+          calEvents.push({ date: v.flightDate, type: 'flight', label: '✈️ ' + (v.airline||'') + ' ' + (v.flightNo||''), volName: v.name||'', id: doc.id });
+        }
+      });
+      renderCal();
+      renderReminders();
+    })
+    .catch(function() { renderCal(); renderReminders(); });
+}
+
+// ── 캘린더 렌더링 ──
+function renderCal() {
+  var months_ko = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  var months_en = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var isKo = curLang === 'ko';
+
+  document.getElementById('cal-title').textContent =
+    calYear + (isKo ? '년 ' : ' ') + (isKo ? months_ko[calMonth] : months_en[calMonth]);
+
+  var firstDay = new Date(calYear, calMonth, 1).getDay();
+  var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  var daysInPrev  = new Date(calYear, calMonth, 0).getDate();
+  var today = new Date();
+  var todayStr = toDateStr(today);
+
+  // 이벤트 날짜 세트
+  var eventDates = {};
+  calEvents.forEach(function(e) { eventDates[e.date] = e; });
+
+  var cells = '';
+  // 이전달 날짜
+  for (var i = firstDay - 1; i >= 0; i--) {
+    cells += '<div class="cal-day other-month">' + (daysInPrev - i) + '</div>';
+  }
+  // 이번달 날짜
+  for (var d = 1; d <= daysInMonth; d++) {
+    var ds = calYear + '-' + pad(calMonth+1) + '-' + pad(d);
+    var cls = 'cal-day';
+    if (ds === todayStr) cls += ' today';
+    if (ds === calSelected) cls += ' selected';
+    if (eventDates[ds]) cls += ' has-event';
+    cells += '<div class="' + cls + '" onclick="selectDay(\'' + ds + '\')">' + d + '</div>';
+  }
+  // 다음달 날짜
+  var remaining = 42 - (firstDay + daysInMonth);
+  for (var n = 1; n <= remaining; n++) {
+    cells += '<div class="cal-day other-month">' + n + '</div>';
+  }
+  document.getElementById('cal-grid').innerHTML = cells;
+
+  // 선택된 날짜 상세
+  if (calSelected) showCalDetail(calSelected);
+}
+
+function selectDay(ds) {
+  calSelected = ds;
+  renderCal();
+  showCalDetail(ds);
+}
+
+function showCalDetail(ds) {
+  var dayEvents = calEvents.filter(function(e) { return e.date === ds; });
+  var detailEl = document.getElementById('cal-detail');
+  if (!dayEvents.length) {
+    detailEl.innerHTML = '<div style="text-align:center;padding:12px;color:var(--t3);font-size:12px;">' + ds + ' — 일정 없음</div>';
+    return;
+  }
+  detailEl.innerHTML = dayEvents.map(function(e) {
+    return '<div class="cal-event-item">' +
+      '<div class="cal-event-title">' + e.label + '</div>' +
+      (e.volName ? '<div class="cal-event-meta">👤 ' + e.volName + '</div>' : '') +
+      '<div class="cal-event-meta">📍 ICN → ATL · ' + ds + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function calPrev() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } calSelected = null; renderCal(); }
+function calNext() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } calSelected = null; renderCal(); }
+
+// ── 리마인더 계산 & 렌더링 ──
+
+// 봉사자 리마인더 타이밍 정의
+var VOL_REMINDERS = [
+  { dday: -7,  type: 'warn',   icon: '✈️',
+    ko: '항공사 반려동물 동반 신청하셨나요? (D-7)',
+    en: 'Have you registered your pet with the airline? (D-7)' },
+  { dday: -3,  type: 'warn',   icon: '⚠️',
+    ko: '반려동물 동반 신청 마감 D-3! 48시간 전까지 필수 완료',
+    en: 'Pet registration deadline in 3 days! Must complete 48hrs before' },
+  { dday: -2,  type: 'danger', icon: '🚨',
+    ko: '오늘까지 항공사 반려동물 동반 신청 완료하세요! (D-2)',
+    en: 'Complete airline pet registration TODAY! (D-2)' },
+  { dday: -1,  type: 'warn',   icon: '📋',
+    ko: '내일 출발! 공항 집합 시간과 서류 최종 확인하세요',
+    en: 'Departing tomorrow! Confirm airport time and documents' },
+  { dday:  0,  type: 'info',   icon: '🐾',
+    ko: '오늘 봉사일입니다! 안전하고 따뜻한 비행 되세요 🐾',
+    en: 'Today is your volunteer day! Safe and warm flight 🐾' },
+  { dday:  1,  type: 'review', icon: '✍️',
+    ko: '봉사 완료! 소중한 경험을 후기로 남겨주세요',
+    en: 'Volunteer complete! Share your experience in a review' }
+];
+
+// 기관 리마인더 타이밍
+var ORG_REMINDERS = [
+  { dday: -3,  type: 'warn',   icon: '📋',
+    ko: '봉사 3일 전! 서류 준비 및 봉사자 최종 확인하세요',
+    en: '3 days before transport! Check documents and volunteer' },
+  { dday:  0,  type: 'info',   icon: '🐾',
+    ko: '오늘 이동일입니다! 공항 담당자 배치 확인하세요',
+    en: 'Transport day! Confirm airport coordinator assignment' },
+  { dday:  3,  type: 'info',   icon: '✅',
+    ko: '이동 완료 3일 경과. 상태를 \'이동완료\'로 업데이트해주세요',
+    en: '3 days since transport. Please update status to Completed' }
+];
+
+function diffDays(dateStr) {
+  var today = new Date(); today.setHours(0,0,0,0);
+  var target = new Date(dateStr); target.setHours(0,0,0,0);
+  return Math.round((target - today) / (1000 * 60 * 60 * 24));
+}
+
+function renderReminders() {
+  var isKo = curLang === 'ko';
+  var isOrg = !!auth.currentUser;
+  var reminders = isOrg ? ORG_REMINDERS : VOL_REMINDERS;
+  var banners = [];
+  var listItems = [];
+
+  calEvents.forEach(function(event) {
+    if (event.type !== 'flight') return;
+    var dd = diffDays(event.date);
+
+    reminders.forEach(function(r) {
+      if (r.dday === dd) {
+        banners.push({ type: r.type, icon: r.icon, msg: isKo ? r.ko : r.en, date: event.date, label: event.label });
+      }
+      // 리마인더 목록 (앞으로 7일 + 지난 3일)
+      if (r.dday >= dd - 3 && r.dday <= dd + 7) {
+        var ddLabel = r.dday === 0 ? 'D-Day' : (r.dday > 0 ? 'D+' + r.dday : 'D' + r.dday);
+        listItems.push({ type: r.type, icon: r.icon, msg: isKo ? r.ko : r.en, ddLabel: ddLabel, date: event.date, dday: r.dday - dd });
+      }
+    });
+  });
+
+  // 배너 렌더
+  var bannerEl = document.getElementById('reminder-banners');
+  if (bannerEl) {
+    bannerEl.innerHTML = banners.map(function(b) {
+      var actionBtn = b.type === 'review'
+        ? '<button onclick="setTab(\'reviews\')" style="margin-left:auto;background:var(--sk);color:#fff;border:none;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">' + (isKo?'후기 작성':'Write Review') + '</button>'
+        : '';
+      return '<div class="reminder-banner ' + b.type + '">' +
+        '<span class="reminder-banner-icon">' + b.icon + '</span>' +
+        '<span style="flex:1;">' + b.msg + '</span>' +
+        actionBtn + '</div>';
+    }).join('');
+  }
+
+  // 리마인더 목록 렌더
+  var listEl = document.getElementById('reminder-list');
+  if (!listEl) return;
+  if (!listItems.length) {
+    listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px;">' +
+      (isKo ? '등록된 항공편이 없어요' : 'No flights registered yet') + '</div>';
+    return;
+  }
+  // 날짜순 정렬
+  listItems.sort(function(a, b) { return a.dday - b.dday; });
+  listEl.innerHTML = listItems.map(function(item) {
+    var ddClass = item.dday <= 0 ? 'danger' : (item.dday <= 2 ? 'soon' : 'normal');
+    return '<div class="reminder-item">' +
+      '<div class="reminder-dday ' + ddClass + '">' + item.ddLabel + '</div>' +
+      '<div style="flex:1;">' +
+      '<div style="font-size:13px;font-weight:600;color:var(--tx);">' + item.icon + ' ' + item.msg + '</div>' +
+      '<div style="font-size:11px;color:var(--t3);margin-top:2px;">' + item.date + ' · ' + item.label + '</div>' +
+      '</div></div>';
+  }).join('');
+}
+
+// ── 기관 D-day 카운트다운 (대시보드) ──
+function renderAdmDday() {
+  var ddayEl = document.getElementById('adm-dday');
+  if (!ddayEl) return;
+  var isKo = curLang === 'ko';
+
+  db.collection('volunteers')
+    .where('status', 'in', ['booked','matched'])
+    .orderBy('flightDate', 'asc')
+    .get()
+    .then(function(snap) {
+      if (snap.empty) { ddayEl.innerHTML = ''; return; }
+      var upcoming = snap.docs.map(function(d) { return d.data(); })
+        .filter(function(v) { return diffDays(v.flightDate) >= -1; })
+        .slice(0, 3);
+      if (!upcoming.length) { ddayEl.innerHTML = ''; return; }
+
+      ddayEl.innerHTML = upcoming.map(function(v) {
+        var dd = diffDays(v.flightDate);
+        var ddStr = dd === 0 ? 'D-Day' : (dd > 0 ? 'D+' + dd : 'D' + dd);
+        var bgC = dd <= 0 ? 'rgba(224,90,43,.15)' : (dd <= 3 ? 'rgba(255,140,0,.12)' : 'rgba(255,255,255,.12)');
+        return '<div style="background:' + bgC + ';border-radius:10px;padding:8px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">' +
+          '<div style="color:#fff;">' +
+          '<div style="font-size:11px;opacity:.75;">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.name||'') + '</div>' +
+          '<div style="font-size:12px;margin-top:2px;">' + v.flightDate + '</div>' +
+          '</div>' +
+          '<div style="font-size:18px;font-weight:800;color:' + (dd <= 1 ? '#FFB347' : '#fff') + ';">' + ddStr + '</div>' +
+          '</div>';
+      }).join('');
+    })
+    .catch(function() {});
+}
+
+// ── setTab에 calendar 추가 ──
+var _origSetTab = setTab;
+setTab = function(t) {
+  _origSetTab(t);
+  if (t === 'calendar') {
+    initCal();
+  }
+};
+
+// ── setAdm에 dday 추가 ──
+var _origSetAdm = setAdm;
+setAdm = function() {
+  _origSetAdm();
+  setTimeout(renderAdmDday, 300);
+};
+
+// ── 유틸 ──
+function toDateStr(d) {
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+// ══════════════════════════════
+// v1.8 추가 기능
+// ══════════════════════════════
+
+// ── 항공사 체크리스트 ──
+var chkState = { chk1: false, chk2: false, chk3: false, chk4: false };
+
+function togCheck(id) {
+  chkState[id] = !chkState[id];
+  var box = document.getElementById(id);
+  var mark = box ? box.querySelector('.chk-mark') : null;
+  if (box) box.classList.toggle('on', chkState[id]);
+  if (mark) mark.style.display = chkState[id] ? 'inline' : 'none';
+
+  // 부모 check-item에 done 클래스
+  if (box && box.parentElement) {
+    box.parentElement.classList.toggle('done', chkState[id]);
+  }
+
+  // 진행률 업데이트
+  var done = Object.values(chkState).filter(Boolean).length;
+  var total = Object.keys(chkState).length;
+  var progEl = document.getElementById('chk-progress');
+  if (progEl) {
+    var isKo = curLang === 'ko';
+    progEl.textContent = done + ' / ' + total + (isKo ? ' 완료' : ' completed');
+    progEl.style.color = done === total ? '#2D9E6B' : '#6B7280';
+    if (done === total) {
+      progEl.textContent = '✅ ' + (isKo ? '모두 완료! 준비됐어요 🐾' : 'All done! You\'re ready 🐾');
+    }
+  }
+
+  // localStorage 저장
+  try { localStorage.setItem('pawst_chk', JSON.stringify(chkState)); } catch(e) {}
+}
+
+// 체크리스트 상태 복원
+function restoreChk() {
+  try {
+    var saved = localStorage.getItem('pawst_chk');
+    if (saved) {
+      chkState = JSON.parse(saved);
+      Object.keys(chkState).forEach(function(id) {
+        if (chkState[id]) togCheck(id); // 복원 (이미 true → toggle해서 false가 되는 문제 방지)
+      });
+    }
+  } catch(e) {}
+}
+
+// ── 홈 화면 리마인더 배너 ──
+function renderHomeBanners() {
+  var bannerEl = document.getElementById('home-reminder-banners');
+  if (!bannerEl) return;
+  var isKo = curLang === 'ko';
+
+  db.collection('volunteers')
+    .where('status', 'in', ['booked', 'matched'])
+    .orderBy('flightDate', 'asc')
+    .get()
+    .then(function(snap) {
+      if (snap.empty) { bannerEl.innerHTML = ''; return; }
+
+      var banners = [];
+      snap.forEach(function(doc) {
+        var v = doc.data();
+        if (!v.flightDate) return;
+        var dd = diffDays(v.flightDate);
+
+        // 중요 D-day만 홈 배너로 표시
+        var homeReminders = [
+          { dday: -3, type: 'warn',   icon: '⚠️',
+            ko: '반려동물 동반 신청 마감 D-3! 일정 탭에서 확인하세요',
+            en: 'Pet registration deadline in 3 days! Check Schedule tab' },
+          { dday: -2, type: 'danger', icon: '🚨',
+            ko: '오늘까지 항공사 반려동물 동반 신청 완료하세요!',
+            en: 'Complete airline pet registration TODAY!' },
+          { dday: -1, type: 'warn',   icon: '📋',
+            ko: '내일 출발! 공항 집합 시간 확인하세요',
+            en: 'Departing tomorrow! Confirm airport meeting time' },
+          { dday:  0, type: 'info',   icon: '🐾',
+            ko: '오늘 봉사일입니다! 안전한 비행 되세요 🐾',
+            en: 'Today is your volunteer day! Safe flight 🐾' },
+          { dday:  1, type: 'review', icon: '✍️',
+            ko: '봉사 완료! 후기를 남겨주세요',
+            en: 'Volunteer complete! Please write a review' }
+        ];
+
+        homeReminders.forEach(function(r) {
+          if (r.dday === dd) {
+            banners.push({ type: r.type, icon: r.icon, msg: isKo ? r.ko : r.en, dday: dd });
+          }
+        });
+      });
+
+      if (!banners.length) { bannerEl.innerHTML = ''; return; }
+
+      bannerEl.innerHTML = banners.map(function(b) {
+        var actionBtn = b.type === 'review'
+          ? '<button onclick="setTab(\'reviews\')" style="margin-left:auto;background:var(--sk);color:#fff;border:none;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">' + (isKo?'후기 작성':'Write Review') + '</button>'
+          : (b.dday <= -2
+            ? '<button onclick="setTab(\'calendar\')" style="margin-left:auto;background:var(--re);color:#fff;border:none;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">' + (isKo?'체크리스트':'Checklist') + '</button>'
+            : '');
+        return '<div class="reminder-banner ' + b.type + '">' +
+          '<span class="reminder-banner-icon">' + b.icon + '</span>' +
+          '<span style="flex:1;font-size:12px;">' + b.msg + '</span>' +
+          actionBtn + '</div>';
+      }).join('');
+    })
+    .catch(function() { bannerEl.innerHTML = ''; });
+}
+
+// ── setTab에서 홈 배너 갱신 ──
+var _origSetTab2 = setTab;
+setTab = function(t) {
+  _origSetTab2(t);
+  if (t === 'home') renderHomeBanners();
+};
+
+// ── 초기화 시 홈 배너 + 체크리스트 복원 ──
+document.addEventListener('DOMContentLoaded', function() {
+  renderHomeBanners();
+  setTimeout(restoreChk, 500);
+});

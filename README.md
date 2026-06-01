@@ -1,6 +1,6 @@
 # PAWST CLASS 🐾
 
-A mobile app that connects people flying from Korea to Atlanta  
+A mobile app that connects people flying from Korea to the U.S.  
 with Korean rescue dogs that need a human escort to reach their forever home.
 
 ----
@@ -23,6 +23,8 @@ I thought there had to be a better way. So I built one.
 - Matches dogs with willing travelers on the same route
 - Supports foster home applications for dogs awaiting transport
 - Partners with 3 verified Korean rescue organizations
+- Organization dashboard with real-time volunteer matching
+- Calendar view with D-day reminders including airline pet registration alerts
 
 ----
 
@@ -50,6 +52,21 @@ I thought there had to be a better way. So I built one.
 | v1.0 | May 17, 2026 | Mobile layout + Noto Sans KR font |
 | v1.1 | May 22, 2026 | Separated CSS · JS files + bottom nav |
 | v1.2 | May 22, 2026 | Flight status + Foster Home section |
+| v1.3 | May 22, 2026 | README added |
+| v1.4 | May 23, 2026 | KO/ENG language toggle + ICN-only departure |
+| v1.5 | May 23, 2026 | Firebase auth + org login + dog registration |
+| v1.6 | May 23, 2026 | Volunteer-led matching + org dashboard tabs |
+| v1.7 | May 23, 2026 | KPFL & Gamjane feedback — fields, 3-step status, foster dashboard |
+| v1.8 | May 24, 2026 | Calendar view + reminder system + airline pet registration checklist |
+
+----
+
+## Tech Stack
+
+- Frontend: HTML · CSS · JavaScript (Vanilla)
+- Backend: Firebase Authentication + Firestore
+- Deployment: GitHub Pages
+- Languages: Korean / English (toggle)
 
 ----
 

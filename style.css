@@ -612,3 +612,18 @@ body {
 .reminder-banner.info   { background: var(--grL); border: 1px solid #9FE1CB; color: var(--gr); }
 .reminder-banner.review { background: #EFF6FF; border: 1px solid #BFDBFE; color: #185FA5; }
 .reminder-banner-icon   { font-size: 20px; flex-shrink: 0; }
+
+/* ── CHECKLIST ── */
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--bg);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--tx);
+  transition: color .15s;
+}
+.check-item:last-of-type { border-bottom: none; }
+.check-item.done { color: var(--t3); text-decoration: line-through; }
