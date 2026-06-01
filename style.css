@@ -627,3 +627,11 @@ body {
 }
 .check-item:last-of-type { border-bottom: none; }
 .check-item.done { color: var(--t3); text-decoration: line-through; }
+
+/* ── CHAT ── */
+#s-chatroom {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  z-index: 50;
+}

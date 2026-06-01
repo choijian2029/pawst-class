@@ -360,6 +360,37 @@
     <div style="height:20px;"></div>
   </div>
 
+  <!-- CHAT TAB -->
+  <div class="bd" id="t-chat" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="page-title" data-ko="채팅 💬" data-en="Chat 💬">채팅 💬</div>
+    </div>
+    <div id="chat-room-list">
+      <div style="text-align:center;padding:40px 20px;color:var(--t3);font-size:13px;">
+        <div style="font-size:36px;margin-bottom:10px;">💬</div>
+        <div data-ko="매칭 완료 후 채팅방이 생성됩니다" data-en="Chat rooms open after matching">매칭 완료 후 채팅방이 생성됩니다</div>
+      </div>
+    </div>
+    <div style="height:20px;"></div>
+  </div>
+
+  <!-- CHAT ROOM (풀스크린) -->
+  <div id="s-chatroom" style="display:none;flex-direction:column;flex:1;min-height:700px;">
+    <div style="background:var(--wh);padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--bd);flex-shrink:0;">
+      <button onclick="closeChatRoom()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--t2);">←</button>
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:700;" id="chatroom-title"></div>
+        <div style="font-size:11px;color:var(--t3);" id="chatroom-sub"></div>
+      </div>
+      <div id="chatroom-status" style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:9px;"></div>
+    </div>
+    <div id="chat-messages" style="flex:1;overflow-y:auto;padding:14px;background:var(--bg);display:flex;flex-direction:column;gap:10px;min-height:500px;"></div>
+    <div style="padding:10px 12px;background:var(--wh);display:flex;gap:8px;border-top:1px solid var(--bd);flex-shrink:0;">
+      <input id="chat-input" placeholder="메시지를 입력하세요..." style="flex:1;border:1.5px solid var(--bd);border-radius:22px;padding:9px 14px;font-size:13px;outline:none;font-family:inherit;background:var(--bg);color:var(--tx);" onkeydown="if(event.key==='Enter')sendChatMsg()">
+      <button onclick="sendChatMsg()" style="background:var(--or);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:18px;cursor:pointer;flex-shrink:0;">↑</button>
+    </div>
+  </div>
+
   <!-- CALENDAR TAB -->
   <div class="bd" id="t-calendar" style="display:none;">
 
@@ -446,7 +477,7 @@
     <button class="ni on" onclick="setTab('home')"><span class="em">🏠</span><span data-ko="홈" data-en="Home">홈</span></button>
     <button class="ni" onclick="setTab('register')"><span class="em">✈️</span><span data-ko="등록" data-en="Register">등록</span></button>
     <button class="ni" onclick="setTab('orgs')"><span class="em">🏥</span><span data-ko="단체" data-en="Orgs">단체</span></button>
-    <button class="ni" onclick="setTab('reviews')"><span class="em">⭐</span><span data-ko="후기" data-en="Reviews">후기</span></button>
+    <button class="ni" onclick="setTab('chat')"><span class="em">💬</span><span data-ko="채팅" data-en="Chat">채팅</span></button>
     <button class="ni" onclick="setTab('calendar')"><span class="em">📅</span><span data-ko="일정" data-en="Schedule">일정</span></button>
   </nav>
 </div>

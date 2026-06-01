@@ -218,17 +218,18 @@ function obTo(i) { obI = i; rOb(); }
 
 // ── TAB SWITCHING ──
 function setTab(t) {
-  ['home','register','orgs','reviews','foster','calendar'].forEach(function(id) {
+  ['home','register','orgs','reviews','foster','calendar','chat'].forEach(function(id) {
     var el = document.getElementById('t-' + id);
     if (el) el.style.display = 'none';
   });
   document.getElementById('t-admin').style.display = 'none';
+  document.getElementById('s-chatroom').style.display = 'none';
 
   var el = document.getElementById('t-' + t);
   if (el) el.style.display = 'block';
 
   document.querySelectorAll('.ni').forEach(function(b) { b.classList.remove('on'); });
-  var tabs = ['home','register','orgs','reviews','calendar'];
+  var tabs = ['home','register','orgs','chat','calendar'];
   var idx = tabs.indexOf(t);
   var nb = document.querySelectorAll('.ni');
   if (nb[idx]) nb[idx].classList.add('on');
@@ -1287,3 +1288,176 @@ document.addEventListener('DOMContentLoaded', function() {
   renderHomeBanners();
   setTimeout(restoreChk, 500);
 });
+
+// ══════════════════════════════
+// v1.9 · 실시간 채팅
+// ══════════════════════════════
+
+var curChatRoom = null;
+var chatUnsubscribe = null;
+
+// ── 채팅방 목록 로드 ──
+function loadChatRooms() {
+  var listEl = document.getElementById('chat-room-list');
+  if (!listEl) return;
+  var isKo = curLang === 'ko';
+
+  // 현재 로그인 유저 (기관) 또는 봉사자
+  var user = auth.currentUser;
+
+  // volunteers 컬렉션에서 matched 상태인 것만
+  var query = user
+    ? db.collection('volunteers').where('status', '==', 'matched')
+    : db.collection('volunteers').where('status', '==', 'matched');
+
+  query.onSnapshot(function(snap) {
+    if (snap.empty) {
+      listEl.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--t3);font-size:13px;"><div style="font-size:36px;margin-bottom:10px;">💬</div><div>' +
+        (isKo ? '매칭 완료 후 채팅방이 생성됩니다' : 'Chat rooms open after matching') + '</div></div>';
+      return;
+    }
+
+    listEl.innerHTML = snap.docs.map(function(doc) {
+      var v = doc.data();
+      var rid = doc.id;
+      var orgInfo = ORG_MAP[v.orgEmail] || { name: v.org || '기관', ico: '🏥', color: '#FFF5E6' };
+      return '<div class="card" style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:13px 14px;margin-bottom:8px;" onclick="openChatRoom(\'' + rid + '\')">' +
+        '<div style="width:44px;height:44px;border-radius:50%;background:' + orgInfo.color + ';display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">' + orgInfo.ico + '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+        '<div style="font-weight:700;font-size:14px;">' + orgInfo.name + '</div>' +
+        '<div style="font-size:12px;color:var(--t2);margin-top:2px;">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') + '</div>' +
+        '<div style="font-size:11px;color:var(--t3);margin-top:1px;">👤 ' + (v.name||'') + '</div>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--t3);">›</div>' +
+        '</div>';
+    }).join('');
+  });
+}
+
+// ── 채팅방 열기 ──
+function openChatRoom(volId) {
+  curChatRoom = volId;
+
+  // 기존 리스너 해제
+  if (chatUnsubscribe) { chatUnsubscribe(); chatUnsubscribe = null; }
+
+  // 모든 탭 숨기고 채팅룸 표시
+  ['home','register','orgs','reviews','foster','calendar','chat'].forEach(function(id) {
+    var el = document.getElementById('t-' + id);
+    if (el) el.style.display = 'none';
+  });
+  var cr = document.getElementById('s-chatroom');
+  cr.style.display = 'flex';
+  cr.style.flexDirection = 'column';
+
+  // 채팅방 정보 로드
+  db.collection('volunteers').doc(volId).get().then(function(doc) {
+    var v = doc.data();
+    var orgInfo = ORG_MAP[v.orgEmail] || { name: v.org || '기관', ico: '🏥' };
+    document.getElementById('chatroom-title').textContent = orgInfo.ico + ' ' + orgInfo.name;
+    document.getElementById('chatroom-sub').textContent = '✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') + ' · 👤 ' + (v.name||'');
+    var stEl = document.getElementById('chatroom-status');
+    stEl.textContent = v.status === 'matched' ? '매칭완료' : '이동완료';
+    stEl.style.background = v.status === 'matched' ? '#EFF6FF' : '#E8F7F0';
+    stEl.style.color = v.status === 'matched' ? '#2563EB' : '#2D9E6B';
+  });
+
+  // 메시지 실시간 로드
+  chatUnsubscribe = db.collection('chats').doc(volId).collection('messages')
+    .orderBy('createdAt', 'asc')
+    .onSnapshot(function(snap) {
+      var msgs = document.getElementById('chat-messages');
+      if (!msgs) return;
+      var user = auth.currentUser;
+      msgs.innerHTML = snap.docs.map(function(doc) {
+        var m = doc.data();
+        var isMe = user ? m.senderEmail === user.email : m.senderType === 'volunteer';
+        var time = m.createdAt ? new Date(m.createdAt.seconds * 1000).toLocaleTimeString('ko', {hour:'2-digit', minute:'2-digit'}) : '';
+        return '<div style="display:flex;flex-direction:column;align-items:' + (isMe?'flex-end':'flex-start') + ';">' +
+          '<div style="font-size:10px;color:var(--t3);margin-bottom:3px;">' + (m.senderName||'') + '</div>' +
+          '<div style="border-radius:' + (isMe?'16px 16px 4px 16px':'16px 16px 16px 4px') + ';padding:10px 13px;font-size:13px;max-width:75%;' +
+          (isMe ? 'background:var(--or);color:#fff;' : 'background:var(--wh);color:var(--tx);border:1px solid var(--bd);') + '">' +
+          m.text + '</div>' +
+          '<div style="font-size:10px;color:var(--t3);margin-top:3px;">' + time + '</div>' +
+          '</div>';
+      }).join('');
+      msgs.scrollTop = msgs.scrollHeight;
+
+      // 빈 채팅방 안내
+      if (snap.empty) {
+        msgs.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">첫 메시지를 보내보세요 🐾</div>';
+      }
+    });
+}
+
+// ── 채팅방 닫기 ──
+function closeChatRoom() {
+  if (chatUnsubscribe) { chatUnsubscribe(); chatUnsubscribe = null; }
+  curChatRoom = null;
+  document.getElementById('s-chatroom').style.display = 'none';
+  setTab('chat');
+}
+
+// ── 메시지 전송 ──
+function sendChatMsg() {
+  var inp = document.getElementById('chat-input');
+  var txt = inp.value.trim();
+  if (!txt || !curChatRoom) return;
+
+  var user = auth.currentUser;
+  var senderName = user ? (ORG_MAP[user.email] ? ORG_MAP[user.email].name : user.email) : '봉사자';
+  var senderType = user ? 'org' : 'volunteer';
+
+  inp.value = '';
+
+  db.collection('chats').doc(curChatRoom).collection('messages').add({
+    text:        txt,
+    senderName:  senderName,
+    senderEmail: user ? user.email : null,
+    senderType:  senderType,
+    createdAt:   firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(function(e) {
+    alert('메시지 전송 실패: ' + e.message);
+    inp.value = txt;
+  });
+}
+
+// ── 매칭 확정 시 채팅방 자동 생성 ──
+function createChatRoom(volId, orgName, volName) {
+  db.collection('chats').doc(volId).set({
+    created: firebase.firestore.FieldValue.serverTimestamp(),
+    orgName: orgName,
+    volName: volName
+  }, { merge: true }).then(function() {
+    // 시스템 메시지 자동 발송
+    db.collection('chats').doc(volId).collection('messages').add({
+      text: '🎉 매칭이 완료되었습니다! 이 채팅방에서 소통해주세요 🐾',
+      senderName: 'PAWST CLASS',
+      senderType: 'system',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  });
+}
+
+// ── setTab에 chat 로드 연결 ──
+var _origSetTab3 = setTab;
+setTab = function(t) {
+  _origSetTab3(t);
+  if (t === 'chat') loadChatRooms();
+};
+
+// ── confirmMatch에 채팅방 생성 연결 ──
+var _origConfirmMatch = confirmMatch;
+confirmMatch = function() {
+  _origConfirmMatch();
+  // 매칭 후 채팅방 생성 (0.5초 후)
+  setTimeout(function() {
+    if (selectedVolId) {
+      db.collection('volunteers').doc(selectedVolId).get().then(function(doc) {
+        var v = doc.data();
+        var orgInfo = ORG_MAP[v.orgEmail] || { name: v.org || '기관' };
+        createChatRoom(selectedVolId, orgInfo.name, v.name || '봉사자');
+      });
+    }
+  }, 500);
+};

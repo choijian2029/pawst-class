@@ -58,6 +58,7 @@ I thought there had to be a better way. So I built one.
 | v1.6 | May 23, 2026 | Volunteer-led matching + org dashboard tabs |
 | v1.7 | May 23, 2026 | KPFL & Gamjane feedback — fields, 3-step status, foster dashboard |
 | v1.8 | May 24, 2026 | Calendar view + reminder system + airline pet registration checklist |
+| v1.9 | Jun 1, 2026 | Real-time chat between volunteers and organizations |
 
 ----
 
