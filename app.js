@@ -1461,3 +1461,238 @@ confirmMatch = function() {
     }
   }, 500);
 };
+
+// ══════════════════════════════
+// v2.0 · 슈퍼어드민
+// ══════════════════════════════
+
+// 슈퍼어드민 계정 (지안이)
+var SUPER_ADMIN_EMAIL = 'pawstclass.1@gmail.com';
+var newOrgColor = '#FFF0EB';
+
+// ── 슈퍼어드민 로그인 ──
+function doAdminLogin() {
+  var email = document.getElementById('admin-email').value.trim();
+  var pw    = document.getElementById('admin-pw').value;
+  var btn   = document.getElementById('admin-login-btn');
+  var err   = document.getElementById('admin-login-err');
+
+  if (!email || !pw) { showAdminErr('이메일과 비밀번호를 입력해 주세요.'); return; }
+  if (email !== SUPER_ADMIN_EMAIL) { showAdminErr('슈퍼어드민 계정이 아닙니다.'); return; }
+
+  btn.textContent = '로그인 중...'; btn.style.opacity = '.6';
+  err.style.display = 'none';
+
+  auth.signInWithEmailAndPassword(email, pw)
+    .then(function() {
+      btn.textContent = '로그인'; btn.style.opacity = '1';
+      scGo('s-admindash');
+      loadAdminDash();
+    })
+    .catch(function() {
+      btn.textContent = '로그인'; btn.style.opacity = '1';
+      showAdminErr('이메일 또는 비밀번호가 올바르지 않습니다.');
+    });
+}
+
+function showAdminErr(msg) {
+  var el = document.getElementById('admin-login-err');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function doAdminLogout() {
+  auth.signOut().then(function() {
+    document.getElementById('admin-email').value = '';
+    document.getElementById('admin-pw').value = '';
+    scGo('s-splash');
+  });
+}
+
+// ── 어드민 대시보드 로드 ──
+function loadAdminDash() {
+  // 통계
+  db.collection('dogs').get().then(function(s) {
+    document.getElementById('stat-dogs').textContent = s.size;
+  });
+  db.collection('volunteers').get().then(function(s) {
+    document.getElementById('stat-vols').textContent = s.size;
+  });
+  db.collection('volunteers').where('status','==','matched').get().then(function(s) {
+    document.getElementById('stat-matched').textContent = s.size;
+  });
+  db.collection('fosters').get().then(function(s) {
+    document.getElementById('stat-fosters').textContent = s.size;
+  });
+
+  // 기본 탭 로드
+  loadAdminOrgs();
+}
+
+// ── 어드민 탭 전환 ──
+function setAdminTab(t) {
+  ['orgs','match','vols','fosters'].forEach(function(id) {
+    document.getElementById('sadm-' + id + '-panel').style.display = id === t ? 'block' : 'none';
+    document.getElementById('sadm-tab-' + id).classList.toggle('on', id === t);
+  });
+  if (t === 'orgs')    loadAdminOrgs();
+  if (t === 'match')   loadAdminMatch();
+  if (t === 'vols')    loadAdminVols();
+  if (t === 'fosters') loadAdminFosters();
+}
+
+// ── 기관 목록 ──
+function loadAdminOrgs() {
+  var listEl = document.getElementById('sadm-org-list');
+  // firebase.js의 ORG_MAP 기반 + Firestore orgs 컬렉션
+  var orgs = Object.keys(ORG_MAP).map(function(email) {
+    return Object.assign({ email: email }, ORG_MAP[email]);
+  });
+
+  // Firestore에 추가된 기관도 불러오기
+  db.collection('orgs').get().then(function(snap) {
+    snap.forEach(function(doc) {
+      var d = doc.data();
+      if (!ORG_MAP[d.email]) orgs.push(d);
+    });
+    renderAdminOrgs(orgs, listEl);
+  }).catch(function() {
+    renderAdminOrgs(orgs, listEl);
+  });
+}
+
+function renderAdminOrgs(orgs, listEl) {
+  listEl.innerHTML = orgs.map(function(org) {
+    return '<div style="background:#fff;border-radius:12px;padding:12px 13px;margin-bottom:8px;display:flex;align-items:center;gap:10px;border:1px solid #E8E0D8;">' +
+      '<div style="width:40px;height:40px;border-radius:10px;background:' + org.color + ';display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">' + org.ico + '</div>' +
+      '<div style="flex:1;"><div style="font-weight:700;font-size:13px;">' + org.name + '</div>' +
+      '<div style="font-size:11px;color:#9CA3AF;">' + org.email + '</div></div>' +
+      '<button onclick="removeOrg(\'' + org.email + '\')" style="background:none;border:none;color:#E05A2B;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;">삭제</button>' +
+      '</div>';
+  }).join('');
+}
+
+// ── 전체 매칭 현황 ──
+function loadAdminMatch() {
+  var listEl = document.getElementById('sadm-match-list');
+  db.collection('volunteers').where('status','in',['matched','done'])
+    .orderBy('flightDate','asc')
+    .get().then(function(snap) {
+      if (snap.empty) { listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px;">매칭 내역이 없어요</div>'; return; }
+      listEl.innerHTML = snap.docs.map(function(doc) {
+        var v = doc.data();
+        var stColor = v.status === 'done' ? '#2D9E6B' : '#3B82F6';
+        var stBg    = v.status === 'done' ? '#E8F7F0' : '#EFF6FF';
+        var stLabel = v.status === 'done' ? '이동완료' : '매칭완료';
+        return '<div style="background:#fff;border-radius:12px;padding:11px 13px;margin-bottom:8px;border:1px solid #E8E0D8;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">' +
+          '<div style="font-weight:700;font-size:13px;">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') + '</div>' +
+          '<span style="font-size:10px;padding:2px 8px;border-radius:9px;font-weight:700;background:' + stBg + ';color:' + stColor + ';">' + stLabel + '</span>' +
+          '</div>' +
+          '<div style="font-size:11px;color:#6B7280;">👤 ' + (v.name||'') + ' · ' + (v.nation||'') + '</div>' +
+          (v.orgEmail ? '<div style="font-size:11px;color:#6B7280;">🏥 ' + (ORG_MAP[v.orgEmail]?ORG_MAP[v.orgEmail].name:v.orgEmail) + '</div>' : '') +
+          '<div style="display:flex;gap:6px;margin-top:8px;">' +
+          (v.status !== 'done' ? '<button onclick="markDone(\'' + doc.id + '\')" style="font-size:11px;padding:4px 10px;border-radius:8px;background:#E8F7F0;color:#2D9E6B;border:none;cursor:pointer;font-family:inherit;font-weight:600;">이동완료 처리</button>' : '') +
+          '</div></div>';
+      }).join('');
+    });
+}
+
+// ── 이동완료 처리 ──
+function markDone(volId) {
+  if (!confirm('이동완료로 처리할까요?')) return;
+  var batch = db.batch();
+  batch.update(db.collection('volunteers').doc(volId), { status: 'done' });
+  batch.commit().then(function() {
+    alert('이동완료 처리되었습니다 🐾');
+    loadAdminMatch();
+    loadAdminDash();
+  });
+}
+
+// ── 전체 봉사자 목록 ──
+function loadAdminVols() {
+  var listEl = document.getElementById('sadm-vol-list');
+  db.collection('volunteers').orderBy('createdAt','desc').get().then(function(snap) {
+    if (snap.empty) { listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px;">봉사자가 없어요</div>'; return; }
+    var sl = { booked:'예약완료', matched:'매칭완료', done:'이동완료' };
+    var sb = { booked:'#FFF5E6', matched:'#EFF6FF', done:'#E8F7F0' };
+    var sc2 = { booked:'#FF8C00', matched:'#3B82F6', done:'#2D9E6B' };
+    listEl.innerHTML = snap.docs.map(function(doc) {
+      var v = doc.data(); var st = v.status || 'booked';
+      return '<div style="background:#fff;border-radius:12px;padding:11px 13px;margin-bottom:8px;border:1px solid #E8E0D8;display:flex;align-items:center;gap:10px;">' +
+        '<div style="flex:1;"><div style="font-weight:700;font-size:13px;">' + (v.name||'이름없음') + '</div>' +
+        '<div style="font-size:11px;color:#9CA3AF;">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') + '</div>' +
+        '<div style="font-size:11px;color:#9CA3AF;">' + (v.email||'') + (v.kakao?' · 💬 '+v.kakao:'') + '</div></div>' +
+        '<span style="font-size:10px;padding:3px 8px;border-radius:9px;font-weight:700;background:' + (sb[st]||'#FFF5E6') + ';color:' + (sc2[st]||'#FF8C00') + ';">' + (sl[st]||st) + '</span>' +
+        '</div>';
+    }).join('');
+  });
+}
+
+// ── 임보 신청자 (어드민용) ──
+function loadAdminFosters() {
+  var listEl = document.getElementById('sadm-foster-list');
+  db.collection('fosters').orderBy('createdAt','desc').get().then(function(snap) {
+    if (snap.empty) { listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px;">임보 신청자가 없어요</div>'; return; }
+    listEl.innerHTML = snap.docs.map(function(doc) {
+      var f = doc.data();
+      var stColor = f.status === 'approved' ? '#2D9E6B' : '#FF8C00';
+      var stBg    = f.status === 'approved' ? '#E8F7F0' : '#FFF5E6';
+      var stLabel = f.status === 'approved' ? '승인' : '검토중';
+      return '<div style="background:#fff;border-radius:12px;padding:11px 13px;margin-bottom:8px;border:1px solid #E8E0D8;display:flex;align-items:center;gap:10px;">' +
+        '<div style="flex:1;"><div style="font-weight:700;font-size:13px;">🏠 ' + (f.name||'') + '</div>' +
+        '<div style="font-size:11px;color:#9CA3AF;">' + (f.city||'') + ' · ' + (f.homeType||'') + '</div>' +
+        '<div style="font-size:11px;color:#9CA3AF;">' + (f.email||'') + '</div></div>' +
+        '<span style="font-size:10px;padding:3px 8px;border-radius:9px;font-weight:700;background:' + stBg + ';color:' + stColor + ';">' + stLabel + '</span>' +
+        '</div>';
+    }).join('');
+  });
+}
+
+// ── 기관 추가 모달 ──
+function opAddOrg() { document.getElementById('add-org-modal').classList.add('on'); }
+
+function selOrgColor(color) {
+  newOrgColor = color;
+  document.querySelectorAll('.color-swatch').forEach(function(el) {
+    el.style.borderColor = el.style.background === color ? '#FF8C00' : 'transparent';
+  });
+}
+
+function saveNewOrg() {
+  var name  = document.getElementById('new-org-name').value.trim();
+  var email = document.getElementById('new-org-email').value.trim();
+  var ico   = document.getElementById('new-org-ico').value.trim() || '🏥';
+
+  if (!name || !email) { alert('기관명과 이메일을 입력해 주세요.'); return; }
+
+  // ORG_MAP에 추가
+  ORG_MAP[email] = { name: name, ico: ico, color: newOrgColor };
+
+  // Firestore에도 저장
+  db.collection('orgs').doc(email).set({
+    name: name, email: email, ico: ico, color: newOrgColor,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function() {
+    clMo('add-org-modal');
+    ['new-org-name','new-org-email','new-org-ico'].forEach(function(id) {
+      document.getElementById(id).value = '';
+    });
+    alert('기관이 등록되었습니다! Firebase Console에서 계정도 생성해주세요 🐾');
+    loadAdminOrgs();
+  }).catch(function(e) { alert('오류: ' + e.message); });
+}
+
+function removeOrg(email) {
+  if (Object.keys(ORG_MAP).indexOf(email) !== -1 &&
+      ['kpups@pawst-class.com','adoptme@pawst-class.com','gamjane@pawst-class.com'].indexOf(email) !== -1) {
+    alert('기본 협력 단체는 삭제할 수 없습니다.');
+    return;
+  }
+  if (!confirm(email + ' 기관을 삭제할까요?')) return;
+  delete ORG_MAP[email];
+  db.collection('orgs').doc(email).delete().then(function() {
+    alert('삭제되었습니다.');
+    loadAdminOrgs();
+  });
+}
