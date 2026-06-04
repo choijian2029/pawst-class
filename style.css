@@ -20,6 +20,9 @@
   --bd: #E8E0D8;
 }
 
+/* ── RESET ── */
+*, *::before, *::after { box-sizing: border-box; }
+
 body {
   font-family: 'Noto Sans KR', system-ui, sans-serif;
   background: var(--bg);
@@ -29,33 +32,42 @@ body {
 }
 
 /* ── APP SHELL ── */
+/* 모바일: 전체 화면 꽉 채움 */
+/* PC: 가운데 카드 */
 .w {
-  width: 100%;
-  max-width: 430px;
-  margin: 0 auto;
-  background: var(--bg);
-  min-height: 100vh;
-  overflow-x: hidden;
   position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background: var(--bg);
+  overflow: hidden;
 }
 
 @media (min-width: 500px) {
   body {
-    background: #E8E4E0;
+    background: #E0DDD9;
     display: flex;
     justify-content: center;
-    padding: 20px 0;
+    align-items: flex-start;
+    padding: 24px 0;
   }
   .w {
-    border-radius: 16px;
-    box-shadow: 0 4px 32px rgba(0,0,0,.18);
-    min-height: calc(100vh - 40px);
+    width: 420px;
+    min-height: calc(100vh - 48px);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,.18);
+    flex-shrink: 0;
+  }
+  /* 데스크톱: 화면이 카드보다 커서 페이지가 스크롤되지 않도록 높이를 맞춤 */
+  .sc {
+    min-height: calc(100vh - 48px);
   }
 }
 
 .sc {
   display: none;
   flex-direction: column;
+  width: 100%;
   min-height: 100vh;
 }
 .sc.on { display: flex; }
@@ -434,7 +446,7 @@ body {
 
 /* ── MODALS ── */
 .mb {
-  display: none; position: absolute; inset: 0;
+  display: none; position: fixed; inset: 0;
   background: rgba(0,0,0,.5); z-index: 60; align-items: flex-end;
 }
 .mb.on { display: flex; }

@@ -501,11 +501,13 @@ rRevs();
 
 // ── FIREBASE 화면 전환 ──
 function scGo(id) {
-  ['s-splash','s-ob','s-main','s-orglogin','s-orgdash','s-dogform'].forEach(function(s) {
-    var el = document.getElementById(s);
-    if (el) el.classList.remove('on');
-  });
-  document.getElementById(id).classList.add('on');
+  // 모든 .sc 화면을 끈 뒤 목표 화면만 켠다.
+  // (목록을 하드코딩하지 않으므로, 화면을 새로 추가해도 자동 처리됨)
+  document.querySelectorAll('.sc').forEach(function(el) { el.classList.remove('on'); });
+  var target = document.getElementById(id);
+  if (target) target.classList.add('on');
+  // 화면 전환 시 항상 맨 위로 스크롤 (이전 화면 스크롤 위치가 남는 문제 방지)
+  window.scrollTo(0, 0);
 }
 
 // ── 기관 로그인 ──
