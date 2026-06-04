@@ -23,30 +23,29 @@
 body {
   font-family: 'Noto Sans KR', system-ui, sans-serif;
   background: #F0ECE8;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 0;
-  margin: 0;
-  min-height: 100vh;
 }
 
 /* ── APP SHELL ── */
 .w {
-  width: 100%;
+  width: 100vw;
   max-width: 430px;
-  min-width: 320px;
   background: var(--bg);
   min-height: 100vh;
-  border-radius: 0;
   overflow: hidden;
   position: relative;
-  box-shadow: none;
+  flex-shrink: 0;
 }
 
 @media (min-width: 480px) {
-  body { padding: 20px; }
+  body { padding: 20px; align-items: flex-start; }
   .w {
+    width: 430px;
     min-height: 700px;
     border-radius: 16px;
     box-shadow: 0 4px 24px rgba(0,0,0,.15);
