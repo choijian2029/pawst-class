@@ -61,8 +61,7 @@ I thought there had to be a better way. So I built one.
 | v1.9 | Jun 1, 2026 | Real-time chat between volunteers and organizations |
 | v2.0 | Jun 2, 2026 | Super admin dashboard — org management, full stats, match tracking |
 | v2.1 | Jun 4, 2026 | Volunteer login/signup, bug fixes — layout, tab buttons, checklist, edit/delete flights, password reset, auto-login, dog edit, duplicate prevention |
-| v2.1 | Jun 3, 2026 | Volunteer login/signup + bug fixes — form validation, photo limit, duplicate match prevention |
-| v2.1 | Jun 3, 2026 | Bug fixes — form validation, photo limit, duplicate match prevention, delete/cancel/done |
+| v2.2 | Jun 5, 2026 | Root-cause layout fix (scGo), login error messages, calendar privacy, post-register redirect, Firestore index error handling |
 
 ----
 

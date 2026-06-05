@@ -416,6 +416,7 @@ function doReg() {
     btn.style.opacity = '.4';
     btn.style.cursor = 'not-allowed';
     showS();
+    setTimeout(function() { setTab('home'); }, 1800);
   })
   .catch(function(e) {
     btn.textContent = isKo ? '등록 완료하기' : 'Complete Registration';
@@ -786,6 +787,8 @@ function loadVolunteers() {
           '<button class="btn-pr" onclick="openMatchModal(\'' + vid + '\')" style="padding:9px;font-size:12px;">이 봉사자와 매칭하기 🐾</button>' +
           '</div>';
       }).join('');
+    }, function(err) {
+      listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#C0392B;font-size:13px;">데이터를 불러오지 못했어요.<br><span style="font-size:11px;color:var(--t3);">Firebase 인덱스 설정이 필요합니다.<br>pawstclass.1@gmail.com으로 문의해 주세요.</span></div>';
     });
 }
 
@@ -1005,21 +1008,28 @@ function loadCalEvents() {
       if (f.flightDate) calEvents.push({ date: f.flightDate, type: 'flight', label: '✈️ ' + (f.airline||'') + ' ' + (f.flightNo||''), org: f.org||'' });
     } catch(e) {}
   }
-  // Firestore에서 매칭된 봉사 일정
-  db.collection('volunteers')
-    .where('status', 'in', ['booked','matched'])
-    .get()
-    .then(function(snap) {
-      snap.forEach(function(doc) {
-        var v = doc.data();
-        if (v.flightDate) {
-          calEvents.push({ date: v.flightDate, type: 'flight', label: '✈️ ' + (v.airline||'') + ' ' + (v.flightNo||''), volName: v.name||'', id: doc.id });
-        }
-      });
-      renderCal();
-      renderReminders();
-    })
-    .catch(function() { renderCal(); renderReminders(); });
+  // 로그인한 봉사자 본인 항공편만 표시 (타인 일정 노출 방지)
+  var calUser = auth.currentUser;
+  if (calUser) {
+    db.collection('volunteers')
+      .where('email', '==', calUser.email)
+      .get()
+      .then(function(snap) {
+        snap.forEach(function(doc) {
+          var v = doc.data();
+          if (v.flightDate) {
+            calEvents.push({ date: v.flightDate, type: 'flight', label: '✈️ ' + (v.airline||'') + ' ' + (v.flightNo||''), volName: v.name||'', id: doc.id });
+          }
+        });
+        renderCal();
+        renderReminders();
+      })
+      .catch(function() { renderCal(); renderReminders(); });
+  } else {
+    // 비로그인: 로컬스토리지 데이터만 표시
+    renderCal();
+    renderReminders();
+  }
 }
 
 // ── 캘린더 렌더링 ──
@@ -1880,8 +1890,10 @@ function doVolLogin() {
         showVolErr(isKo ? '계정이 없습니다. 회원가입 탭에서 가입해 주세요.' : 'No account found. Please sign up.');
       } else if (e.code === 'auth/wrong-password') {
         showVolErr(isKo ? '비밀번호가 올바르지 않습니다.' : 'Incorrect password.');
+      } else if (e.code === 'auth/invalid-email') {
+        showVolErr(isKo ? '이메일 형식을 확인해 주세요.' : 'Please check your email format.');
       } else {
-        showVolErr(isKo ? '로그인 오류: ' + e.message : 'Login error: ' + e.message);
+        showVolErr(isKo ? '로그인 중 오류가 발생했습니다. 다시 시도해 주세요.' : 'Login error. Please try again.');
       }
     });
 }
@@ -1933,7 +1945,7 @@ function doVolSignup() {
       if (e.code === 'auth/email-already-in-use') {
         showVolErr(isKo ? '이미 가입된 이메일입니다. 로그인 탭을 이용해 주세요.' : 'Email already in use. Please login.');
       } else {
-        showVolErr(isKo ? '가입 오류: ' + e.message : 'Signup error: ' + e.message);
+        showVolErr(isKo ? '가입 중 오류가 발생했습니다. 다시 시도해 주세요.' : 'Signup error. Please try again.');
       }
     });
 }
