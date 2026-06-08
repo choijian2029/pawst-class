@@ -501,15 +501,64 @@ function rRevs() {
 rRevs();
 
 // ── FIREBASE 화면 전환 ──
+// ── 현재 화면 추적 (백버튼 처리용) ──
+var _curScreen = 's-splash';
+var _curTab    = 'home';
+
 function scGo(id) {
-  // 모든 .sc 화면을 끈 뒤 목표 화면만 켠다.
-  // (목록을 하드코딩하지 않으므로, 화면을 새로 추가해도 자동 처리됨)
   document.querySelectorAll('.sc').forEach(function(el) { el.classList.remove('on'); });
   var target = document.getElementById(id);
   if (target) target.classList.add('on');
-  // 화면 전환 시 항상 맨 위로 스크롤 (이전 화면 스크롤 위치가 남는 문제 방지)
   window.scrollTo(0, 0);
+  _curScreen = id;
+
+  // history 스택에 현재 화면 기록 (갤럭시 백버튼용)
+  window.history.pushState({ screen: id, tab: _curTab }, '', '');
 }
+
+// ── 갤럭시/안드로이드 백버튼 (popstate) 처리 ──
+window.addEventListener('popstate', function(e) {
+  // 수정 모달 열려 있으면 닫기
+  var modal = document.getElementById('edit-flight-modal');
+  if (modal) { modal.remove(); window.history.pushState({}, '', ''); return; }
+
+  // 채팅방 열려 있으면 닫기
+  var cr = document.getElementById('s-chatroom');
+  if (cr && cr.style.display !== 'none') { closeChatRoom(); window.history.pushState({}, '', ''); return; }
+
+  // 봉사자 프로필 열려 있으면 닫기
+  var vp = document.getElementById('s-volprofile');
+  if (vp && vp.style.display !== 'none') { closeVolProfile(); window.history.pushState({}, '', ''); return; }
+
+  // 서브화면(기관 대시보드, 로그인 등) → 스플래시로
+  if (_curScreen !== 's-main' && _curScreen !== 's-splash') {
+    scGo('s-splash');
+    window.history.pushState({}, '', '');
+    return;
+  }
+
+  // 메인 탭에서 홈이 아닌 탭 → 홈으로
+  if (_curScreen === 's-main' && _curTab !== 'home') {
+    setTab('home');
+    window.history.pushState({}, '', '');
+    return;
+  }
+
+  // 홈에서 백버튼 → 스플래시
+  if (_curScreen === 's-main' && _curTab === 'home') {
+    scGo('s-splash');
+    window.history.pushState({}, '', '');
+    return;
+  }
+});
+
+// setTab override — _curTab 추적
+var _origSetTabNav = setTab;
+setTab = function(t) {
+  _curTab = t;
+  _origSetTabNav(t);
+  window.history.pushState({ screen: 's-main', tab: t }, '', '');
+};
 
 // ── 기관 로그인 ──
 function doLogin() {
@@ -931,8 +980,11 @@ function confirmMatch() {
   btn.textContent = isKo ? '매칭 중...' : 'Matching...';
   btn.style.opacity = '.6';
 
-  // ── 중복 매칭 방지: 봉사자 현재 상태 확인 ──
-  db.collection('volunteers').doc(selectedVolId).get().then(function(doc) {
+  // 스냅샷 — 비동기 처리 중 값 변경 방지
+  var snapVolId  = selectedVolId;
+  var snapDogIds = selectedDogIds.slice();
+
+  db.collection('volunteers').doc(snapVolId).get().then(function(doc) {
     var v = doc.data();
     if (v.status !== 'booked') {
       btn.textContent = isKo ? '매칭 확정 🐾' : 'Confirm Match 🐾';
@@ -943,17 +995,16 @@ function confirmMatch() {
     }
 
     var batch = db.batch();
-    // 봉사자 업데이트 — matchedDogs 배열로 저장
-    batch.update(db.collection('volunteers').doc(selectedVolId), {
+    batch.update(db.collection('volunteers').doc(snapVolId), {
       status:      'matched',
-      matchedDog:  selectedDogIds[0],          // 하위호환
-      matchedDogs: selectedDogIds              // 다마리 지원
+      matchedDog:  snapDogIds[0],
+      matchedDogs: snapDogIds,
+      orgEmail:    auth.currentUser ? auth.currentUser.email : null
     });
-    // 강아지 각각 업데이트
-    selectedDogIds.forEach(function(dogId) {
+    snapDogIds.forEach(function(dogId) {
       batch.update(db.collection('dogs').doc(dogId), {
         status:     'matched',
-        matchedVol: selectedVolId
+        matchedVol: snapVolId
       });
     });
 
@@ -962,10 +1013,34 @@ function confirmMatch() {
         btn.textContent = isKo ? '매칭 확정 🐾' : 'Confirm Match 🐾';
         btn.style.opacity = '1';
         clMo('mm');
-        var cnt = selectedDogIds.length;
+        var cnt = snapDogIds.length;
         alert('🎉 ' + (isKo
           ? '매칭이 완료되었습니다! (' + cnt + '마리) 봉사자에게 카카오톡으로 연락해주세요.'
           : 'Matching complete! (' + cnt + ' dog' + (cnt>1?'s':'') + ') Please contact the volunteer via KakaoTalk.'));
+
+        // ── 채팅방 자동 생성 (매칭 직후) ──
+        var orgInfo = ORG_MAP[auth.currentUser ? auth.currentUser.email : ''] || { name: v.org || '기관' };
+        if (snapDogIds.length === 0) {
+          createChatRoom(snapVolId, orgInfo.name, v.name || '봉사자', null);
+          return;
+        }
+        var dogInfoLines = [];
+        var fetched = 0;
+        snapDogIds.forEach(function(dogId) {
+          db.collection('dogs').doc(dogId).get().then(function(ddoc) {
+            if (ddoc.exists) {
+              var d = ddoc.data();
+              dogInfoLines.push('🐾 ' + d.name + ' · ' + d.breed + ' · ' + d.weight + 'kg');
+            }
+            fetched++;
+            if (fetched === snapDogIds.length) {
+              var dogInfoText = '📋 매칭된 강아지 정보:\n' + dogInfoLines.join('\n') +
+                '\n\n✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') +
+                '\n👤 봉사자: ' + (v.name||'') + (v.kakao ? ' · 💬 ' + v.kakao : '');
+              createChatRoom(snapVolId, orgInfo.name, v.name || '봉사자', dogInfoText);
+            }
+          });
+        });
       })
       .catch(function(e) {
         btn.textContent = isKo ? '매칭 확정 🐾' : 'Confirm Match 🐾';
@@ -1226,29 +1301,59 @@ function diffDays(dateStr) {
 
 function renderReminders() {
   var isKo = curLang === 'ko';
-  var isOrg = !!auth.currentUser;
-  var reminders = isOrg ? ORG_REMINDERS : VOL_REMINDERS;
+  var listEl = document.getElementById('reminder-list');
+  var bannerEl = document.getElementById('reminder-banners');
+
+  // 항공편 이벤트 없으면 빈 상태
+  var flightEvents = calEvents.filter(function(e) { return e.type === 'flight'; });
+  if (!flightEvents.length) {
+    if (listEl) listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px;">' +
+      (isKo ? '등록된 항공편이 없어요' : 'No flights registered yet') + '</div>';
+    if (bannerEl) bannerEl.innerHTML = '';
+    return;
+  }
+
+  // ── 전체 리마인더 타임라인 (D-14 ~ D+3) ──
+  var ALL_REMINDERS = [
+    { dday:-14, type:'info',   icon:'📅', ko:'D-14 · 항공편 등록 확인 및 개인 일정 조정하세요', en:'D-14 · Confirm flight and adjust personal schedule' },
+    { dday:-7,  type:'warn',   icon:'✈️', ko:'D-7 · 항공사 반려동물 동반 신청 여부 확인하세요', en:'D-7 · Check if airline pet registration has been submitted' },
+    { dday:-3,  type:'warn',   icon:'⚠️', ko:'D-3 · 기관에서 반려동물 동반 신청 후 카톡 알림 확인', en:'D-3 · Confirm KakaoTalk notification after org submits pet registration' },
+    { dday:-2,  type:'danger', icon:'🚨', ko:'D-2 · 오늘까지 반려동물 동반 신청 완료! (48시간 전 마감)', en:'D-2 · Pet registration must be complete today! (48hr deadline)' },
+    { dday:-1,  type:'warn',   icon:'📋', ko:'D-1 · 내일 출발! 건강증명서·케이지 최종 확인', en:'D-1 · Departing tomorrow! Check health certificate and crate' },
+    { dday: 0,  type:'info',   icon:'🐾', ko:'D-Day · 오늘 봉사일! 안전하고 따뜻한 비행 되세요 🐾', en:'D-Day · Volunteer day! Safe and warm flight 🐾' },
+    { dday: 1,  type:'review', icon:'✍️', ko:'D+1 · 봉사 완료! 소중한 후기를 남겨주세요', en:'D+1 · Complete! Please leave a review' }
+  ];
+
   var banners = [];
   var listItems = [];
 
-  calEvents.forEach(function(event) {
-    if (event.type !== 'flight') return;
+  flightEvents.forEach(function(event) {
     var dd = diffDays(event.date);
 
-    reminders.forEach(function(r) {
+    ALL_REMINDERS.forEach(function(r) {
+      // 배너: 오늘 해당되는 항목만
       if (r.dday === dd) {
-        banners.push({ type: r.type, icon: r.icon, msg: isKo ? r.ko : r.en, date: event.date, label: event.label });
+        banners.push({ type:r.type, icon:r.icon, msg:isKo?r.ko:r.en, date:event.date, label:event.label });
       }
-      // 리마인더 목록 (앞으로 7일 + 지난 3일)
-      if (r.dday >= dd - 3 && r.dday <= dd + 7) {
-        var ddLabel = r.dday === 0 ? 'D-Day' : (r.dday > 0 ? 'D+' + r.dday : 'D' + r.dday);
-        listItems.push({ type: r.type, icon: r.icon, msg: isKo ? r.ko : r.en, ddLabel: ddLabel, date: event.date, dday: r.dday - dd });
-      }
+      // 목록: 항상 전체 표시 (완료 표시 포함)
+      var absDiff = dd - r.dday; // absDiff > 0 이면 해당 D-day가 이미 지남
+      var ddLabel = r.dday === 0 ? 'D-Day'
+                  : r.dday > 0  ? 'D+' + r.dday
+                  : 'D' + r.dday;
+      listItems.push({
+        type:    r.type,
+        icon:    r.icon,
+        msg:     isKo ? r.ko : r.en,
+        ddLabel: ddLabel,
+        date:    event.date,
+        label:   event.label,
+        sortKey: r.dday,
+        past:    absDiff > 0   // 이미 지난 리마인더
+      });
     });
   });
 
   // 배너 렌더
-  var bannerEl = document.getElementById('reminder-banners');
   if (bannerEl) {
     bannerEl.innerHTML = banners.map(function(b) {
       var actionBtn = b.type === 'review'
@@ -1262,23 +1367,22 @@ function renderReminders() {
   }
 
   // 리마인더 목록 렌더
-  var listEl = document.getElementById('reminder-list');
   if (!listEl) return;
-  if (!listItems.length) {
-    listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px;">' +
-      (isKo ? '등록된 항공편이 없어요' : 'No flights registered yet') + '</div>';
-    return;
-  }
-  // 날짜순 정렬
-  listItems.sort(function(a, b) { return a.dday - b.dday; });
+  listItems.sort(function(a, b) { return a.sortKey - b.sortKey; });
   listEl.innerHTML = listItems.map(function(item) {
-    var ddClass = item.dday <= 0 ? 'danger' : (item.dday <= 2 ? 'soon' : 'normal');
-    return '<div class="reminder-item">' +
+    var ddClass = item.past ? 'done'
+                : item.sortKey === 0 ? 'danger'
+                : item.sortKey >= -2 ? 'soon'
+                : 'normal';
+    var pastStyle = item.past ? 'opacity:.45;text-decoration:line-through;' : '';
+    return '<div class="reminder-item" style="' + pastStyle + '">' +
       '<div class="reminder-dday ' + ddClass + '">' + item.ddLabel + '</div>' +
       '<div style="flex:1;">' +
       '<div style="font-size:13px;font-weight:600;color:var(--tx);">' + item.icon + ' ' + item.msg + '</div>' +
-      '<div style="font-size:11px;color:var(--t3);margin-top:2px;">' + item.date + ' · ' + item.label + '</div>' +
-      '</div></div>';
+      '<div style="font-size:11px;color:var(--t3);margin-top:2px;">✈️ ' + item.label + ' · ' + item.date + '</div>' +
+      '</div>' +
+      (item.past ? '<span style="font-size:11px;color:var(--gr);font-weight:700;">✓</span>' : '') +
+      '</div>';
   }).join('');
 }
 
@@ -1618,45 +1722,6 @@ var _origSetTab3 = setTab;
 setTab = function(t) {
   _origSetTab3(t);
   if (t === 'chat') loadChatRooms();
-};
-
-// ── confirmMatch에 채팅방 생성 연결 ──
-var _origConfirmMatch = confirmMatch;
-confirmMatch = function() {
-  var snapVolId  = selectedVolId;
-  var snapDogIds = selectedDogIds.slice();
-  _origConfirmMatch();
-  // 매칭 후 채팅방 생성 (0.5초 후)
-  setTimeout(function() {
-    if (!snapVolId) return;
-    db.collection('volunteers').doc(snapVolId).get().then(function(doc) {
-      var v = doc.data();
-      var orgInfo = ORG_MAP[v.orgEmail] || { name: v.org || '기관' };
-
-      // 강아지 정보 모아서 자동 메시지 생성
-      if (snapDogIds.length === 0) {
-        createChatRoom(snapVolId, orgInfo.name, v.name || '봉사자', null);
-        return;
-      }
-      var dogInfoLines = [];
-      var fetched = 0;
-      snapDogIds.forEach(function(dogId) {
-        db.collection('dogs').doc(dogId).get().then(function(ddoc) {
-          if (ddoc.exists) {
-            var d = ddoc.data();
-            dogInfoLines.push('🐾 ' + d.name + ' · ' + d.breed + ' · ' + d.weight + 'kg (' + (d.dateFrom||'') + ' ~ ' + (d.dateTo||'') + ')');
-          }
-          fetched++;
-          if (fetched === snapDogIds.length) {
-            var dogInfoText = '📋 매칭된 강아지 정보:\n' + dogInfoLines.join('\n') +
-              '\n\n✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') +
-              '\n👤 봉사자: ' + (v.name||'') + (v.kakao ? ' · 💬 ' + v.kakao : '');
-            createChatRoom(snapVolId, orgInfo.name, v.name || '봉사자', dogInfoText);
-          }
-        });
-      });
-    });
-  }, 500);
 };
 
 // ══════════════════════════════
@@ -2353,27 +2418,106 @@ auth.onAuthStateChanged(function(user) {
 // v2.1 · 19개 수정 추가 기능
 // ══════════════════════════════════════════
 
-// ── Fix 4 v2.3: 봉사자 항공편 수정/삭제 ──
+// ── Fix 4 v2.5: 봉사자 항공편 전체 필드 수정 모달 ──
 function editMyFlight(volId) {
   db.collection('volunteers').doc(volId).get().then(function(doc) {
     if (!doc.exists) { alert('항공편 정보를 찾을 수 없습니다.'); return; }
-    var data = doc.data();
-    var newFlightNo = prompt('항공편 번호 수정 (현재: ' + (data.flightNo||'') + '):', data.flightNo||'');
-    if (newFlightNo === null) return;
-    var newDate = prompt('출발 날짜 수정 (현재: ' + (data.flightDate||'') + ', 형식: YYYY-MM-DD):', data.flightDate||'');
-    if (newDate === null) return;
-    if (!newFlightNo.trim() || !newDate.trim()) {
-      alert('항공편 번호와 날짜를 입력해 주세요.');
-      return;
-    }
-    db.collection('volunteers').doc(volId).update({
-      flightNo:   newFlightNo.trim().toUpperCase(),
-      flightDate: newDate.trim()
-    }).then(function() {
-      alert('수정되었습니다 🐾');
-      var user = auth.currentUser;
-      if (user) loadMyFlights(user.email);
-    }).catch(function(e) { alert('오류: ' + e.message); });
+    var v = doc.data();
+    var isKo = curLang === 'ko';
+
+    // 모달 HTML 동적 생성
+    var existing = document.getElementById('edit-flight-modal');
+    if (existing) existing.remove();
+
+    var modal = document.createElement('div');
+    modal.id = 'edit-flight-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+    modal.innerHTML =
+      '<div style="background:var(--wh);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px;max-height:90vh;overflow-y:auto;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">' +
+      '<div style="font-size:16px;font-weight:800;">' + (isKo ? '✏️ 항공편 정보 수정' : '✏️ Edit Flight Info') + '</div>' +
+      '<button onclick="document.getElementById(\'edit-flight-modal\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--t2);">×</button>' +
+      '</div>' +
+
+      // 항공사 칩
+      '<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:6px;">' + (isKo?'항공사':'Airline') + '</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:14px;" id="edit-airline-chips">' +
+      ['대한항공 KE','아시아나 OZ','에어프레미아 RS'].map(function(a) {
+        var on = (v.airline||'') === a ? ' on' : '';
+        return '<button class="chip' + on + '" onclick="editChip(this)" style="flex:1;padding:8px 0;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">' + a + '</button>';
+      }).join('') +
+      '</div>' +
+
+      // 항공편 번호
+      '<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:6px;">' + (isKo?'항공편 번호':'Flight No.') + '</div>' +
+      '<input id="edit-fno" class="fi" value="' + (v.flightNo||'') + '" placeholder="KE 035" style="margin-bottom:14px;">' +
+
+      // 출발 날짜
+      '<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:6px;">' + (isKo?'출발 날짜':'Departure Date') + '</div>' +
+      '<input id="edit-fdate" type="date" class="fi" value="' + (v.flightDate||'') + '" style="margin-bottom:14px;">' +
+
+      // 이름
+      '<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:6px;">' + (isKo?'이름 (영문)':'Full Name') + '</div>' +
+      '<input id="edit-fname" class="fi" value="' + (v.name||'') + '" placeholder="Hong Gil Dong" style="margin-bottom:14px;">' +
+
+      // 국적
+      '<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:6px;">' + (isKo?'국적':'Nationality') + '</div>' +
+      '<input id="edit-fnation" class="fi" value="' + (v.nation||'') + '" placeholder="Korean" style="margin-bottom:14px;">' +
+
+      // 카카오ID
+      '<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:6px;">카카오 ID</div>' +
+      '<input id="edit-fkakao" class="fi" value="' + (v.kakao||'') + '" placeholder="kakao_id" style="margin-bottom:14px;">' +
+
+      // 연락처
+      '<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:6px;">' + (isKo?'연락처':'Phone') + '</div>' +
+      '<input id="edit-fphone" class="fi" value="' + (v.phone||'') + '" placeholder="+1-404-000-0000" style="margin-bottom:20px;">' +
+
+      '<div id="edit-flight-err" style="display:none;color:var(--re);font-size:12px;margin-bottom:10px;"></div>' +
+      '<button onclick="saveMyFlight(\'' + volId + '\')" class="btn-pr">' + (isKo?'저장하기':'Save Changes') + '</button>' +
+      '<button onclick="document.getElementById(\'edit-flight-modal\').remove()" class="btn-sec" style="margin-top:8px;">' + (isKo?'취소':'Cancel') + '</button>' +
+      '</div>';
+
+    document.body.appendChild(modal);
+  }).catch(function(e) { alert('오류: ' + e.message); });
+}
+
+function editChip(el) {
+  document.querySelectorAll('#edit-airline-chips .chip').forEach(function(c) { c.classList.remove('on'); });
+  el.classList.add('on');
+}
+
+function saveMyFlight(volId) {
+  var isKo    = curLang === 'ko';
+  var airline = '';
+  document.querySelectorAll('#edit-airline-chips .chip.on').forEach(function(c) { airline = c.textContent.trim(); });
+  var flightNo   = (document.getElementById('edit-fno').value||'').trim().toUpperCase();
+  var flightDate = (document.getElementById('edit-fdate').value||'').trim();
+  var name       = (document.getElementById('edit-fname').value||'').trim();
+  var nation     = (document.getElementById('edit-fnation').value||'').trim();
+  var kakao      = (document.getElementById('edit-fkakao').value||'').trim();
+  var phone      = (document.getElementById('edit-fphone').value||'').trim();
+  var errEl      = document.getElementById('edit-flight-err');
+
+  if (!flightNo || !flightDate) {
+    errEl.textContent = isKo ? '항공편 번호와 날짜는 필수입니다.' : 'Flight number and date are required.';
+    errEl.style.display = 'block';
+    return;
+  }
+  var today = new Date(); today.setHours(0,0,0,0);
+  if (new Date(flightDate) < today) {
+    errEl.textContent = isKo ? '출발 날짜는 오늘 이후여야 합니다.' : 'Date must be in the future.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  db.collection('volunteers').doc(volId).update({
+    airline: airline, flightNo: flightNo, flightDate: flightDate,
+    name: name, nation: nation, kakao: kakao, phone: phone
+  }).then(function() {
+    document.getElementById('edit-flight-modal').remove();
+    alert(isKo ? '수정되었습니다 🐾' : 'Updated successfully 🐾');
+    var user = auth.currentUser;
+    if (user) loadMyFlights(user.email);
   }).catch(function(e) { alert('오류: ' + e.message); });
 }
 
@@ -2836,3 +2980,7 @@ function editDogById(dogId) {
     editDog(dogId, doc.data());
   });
 }
+// ── 백버튼 초기 history state 세팅 ──
+document.addEventListener('DOMContentLoaded', function() {
+  window.history.replaceState({ screen: 's-splash', tab: 'home' }, '', '');
+});
