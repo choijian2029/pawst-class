@@ -754,9 +754,16 @@ function setDashTab(t) {
   document.getElementById('dash-dogs-panel').style.display   = t === 'dogs'   ? 'block' : 'none';
   document.getElementById('dash-vols-panel').style.display   = t === 'vols'   ? 'block' : 'none';
   document.getElementById('dash-foster-panel').style.display = t === 'foster' ? 'block' : 'none';
+  var chatPanelEl = document.getElementById('dash-chat-panel');
+  if (chatPanelEl) chatPanelEl.style.display = t === 'chat' ? 'block' : 'none';
+
   document.getElementById('tab-dogs').classList.toggle('on',   t === 'dogs');
   document.getElementById('tab-vols').classList.toggle('on',   t === 'vols');
   document.getElementById('tab-foster').classList.toggle('on', t === 'foster');
+  var tabChatEl = document.getElementById('tab-chat');
+  if (tabChatEl) tabChatEl.classList.toggle('on', t === 'chat');
+
+  if (t === 'chat') loadOrgChatList();
 }
 
 // ── 봉사자 목록 실시간 로드 ──
@@ -2170,37 +2177,73 @@ function doVolLogout() {
   });
 }
 
-// ── 채팅탭 - 봉사자도 본인 채팅방 접근 가능 ──
+// ── 채팅탭 v2.3: 봉사자/기관 모두 명확한 채팅방 목록 ──
 var _origLoadChatRooms = loadChatRooms;
 loadChatRooms = function() {
-  var user = auth.currentUser;
-  if (!user) {
-    // 비로그인 → 로그인 유도
-    var listEl = document.getElementById('chat-room-list');
-    if (listEl) {
-      var isKo = curLang === 'ko';
-      listEl.innerHTML = '<div style="text-align:center;padding:40px 20px;">' +
-        '<div style="font-size:36px;margin-bottom:10px;">💬</div>' +
-        '<div style="font-size:13px;color:var(--t2);margin-bottom:16px;">' +
-        (isKo ? '채팅은 로그인 후 이용 가능합니다' : 'Please login to access chat') + '</div>' +
-        '<button class="btn-pr" onclick="scGo(\'s-vollogin\')" style="width:auto;padding:10px 24px;">' +
-        (isKo ? '로그인하기' : 'Login') + '</button></div>';
-    }
-    return;
-  }
-  // 기관 로그인인 경우 기존 함수 사용
-  if (ORG_MAP[user.email]) {
-    _origLoadChatRooms();
-    return;
-  }
-  // 봉사자 - 본인 매칭된 채팅방만
+  var user   = auth.currentUser;
   var listEl = document.getElementById('chat-room-list');
   if (!listEl) return;
   var isKo = curLang === 'ko';
 
+  // ── 비로그인 ──
+  if (!user) {
+    listEl.innerHTML = '<div style="text-align:center;padding:40px 20px;">' +
+      '<div style="font-size:36px;margin-bottom:10px;">💬</div>' +
+      '<div style="font-size:13px;color:var(--t2);margin-bottom:16px;">' +
+      (isKo ? '채팅은 로그인 후 이용 가능합니다' : 'Please login to access chat') + '</div>' +
+      '<button class="btn-pr" onclick="scGo(\'s-vollogin\')" style="width:auto;padding:10px 24px;">' +
+      (isKo ? '로그인하기' : 'Login') + '</button></div>';
+    return;
+  }
+
+  listEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--t3);font-size:13px;">불러오는 중...</div>';
+
+  // ── 기관 로그인 ──
+  if (ORG_MAP[user.email]) {
+    db.collection('volunteers')
+      .where('status', 'in', ['matched', 'done'])
+      .orderBy('flightDate', 'asc')
+      .get()
+      .then(function(snap) {
+        // 내 기관과 매칭된 봉사자만 필터
+        var mine = snap.docs.filter(function(d) {
+          return d.data().orgEmail === user.email;
+        });
+        if (!mine.length) {
+          listEl.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--t3);font-size:13px;">' +
+            '<div style="font-size:36px;margin-bottom:10px;">💬</div>' +
+            '<div>' + (isKo ? '매칭 완료 후 채팅방이 생성됩니다' : 'Chat rooms open after matching') + '</div></div>';
+          return;
+        }
+        listEl.innerHTML = mine.map(function(doc) {
+          var v = doc.data(); var vid = doc.id;
+          var stBg2   = v.status === 'done' ? '#E8F7F0' : '#EFF6FF';
+          var stClr2  = v.status === 'done' ? '#2D9E6B' : '#2563EB';
+          var stLbl   = isKo ? (v.status==='done'?'이동완료':'매칭완료') : (v.status==='done'?'Completed':'Matched');
+          var dogCnt  = (v.matchedDogs && v.matchedDogs.length) ? v.matchedDogs.length : (v.matchedDog ? 1 : 0);
+          var dogBadge = dogCnt ? '<span style="font-size:10px;background:#FFF5E6;color:#FF8C00;padding:2px 7px;border-radius:9px;font-weight:700;margin-left:4px;">🐾 ' + dogCnt + (isKo?'마리':'dog'+(dogCnt>1?'s':'')) + '</span>' : '';
+          return '<div class="card" style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:13px 14px;margin-bottom:8px;" onclick="openChatRoom(\'' + vid + '\')">' +
+            '<div style="width:44px;height:44px;border-radius:50%;background:#FFF0EB;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">👤</div>' +
+            '<div style="flex:1;min-width:0;">' +
+            '<div style="font-weight:700;font-size:14px;display:flex;align-items:center;gap:4px;">' + (v.name||'봉사자') + dogBadge + '</div>' +
+            '<div style="font-size:12px;color:var(--t2);margin-top:2px;">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') + '</div>' +
+            '<div style="font-size:11px;color:var(--t3);margin-top:1px;">' + (v.email||'') + (v.kakao?' · 💬 '+v.kakao:'') + '</div>' +
+            '</div>' +
+            '<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:9px;background:' + stBg2 + ';color:' + stClr2 + ';flex-shrink:0;">' + stLbl + '</span>' +
+            '</div>';
+        }).join('');
+      })
+      .catch(function() {
+        listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--re);font-size:13px;">' +
+          (isKo ? '잠시 후 다시 시도해 주세요.' : 'Please try again later.') + '</div>';
+      });
+    return;
+  }
+
+  // ── 봉사자 로그인 ──
   db.collection('volunteers')
     .where('email', '==', user.email)
-    .where('status', '==', 'matched')
+    .where('status', 'in', ['matched', 'done'])
     .get()
     .then(function(snap) {
       if (snap.empty) {
@@ -2212,16 +2255,88 @@ loadChatRooms = function() {
       listEl.innerHTML = snap.docs.map(function(doc) {
         var v = doc.data(); var vid = doc.id;
         var orgInfo = ORG_MAP[v.orgEmail] || { name: v.org||'기관', ico:'🏥', color:'#FFF5E6' };
+        var stBg2   = v.status === 'done' ? '#E8F7F0' : '#EFF6FF';
+        var stClr2  = v.status === 'done' ? '#2D9E6B' : '#2563EB';
+        var stLbl   = isKo ? (v.status==='done'?'이동완료':'매칭완료') : (v.status==='done'?'Completed':'Matched');
         return '<div class="card" style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:13px 14px;margin-bottom:8px;" onclick="openChatRoom(\'' + vid + '\')">' +
           '<div style="width:44px;height:44px;border-radius:50%;background:' + orgInfo.color + ';display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">' + orgInfo.ico + '</div>' +
-          '<div style="flex:1;"><div style="font-weight:700;font-size:14px;">' + orgInfo.name + '</div>' +
-          '<div style="font-size:12px;color:var(--t2);">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') + '</div></div>' +
-          '<div style="font-size:11px;color:var(--t3);">›</div></div>';
+          '<div style="flex:1;min-width:0;">' +
+          '<div style="font-weight:700;font-size:14px;">' + orgInfo.name + '</div>' +
+          '<div style="font-size:12px;color:var(--t2);margin-top:2px;">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') + '</div>' +
+          '<div style="font-size:11px;color:#6B7280;margin-top:1px;">🏥 ' + (isKo?'매칭된 기관':'Matched organization') + '</div>' +
+          '</div>' +
+          '<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:9px;background:' + stBg2 + ';color:' + stClr2 + ';flex-shrink:0;">' + stLbl + '</span>' +
+          '</div>';
       }).join('');
+    })
+    .catch(function() {
+      listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--re);font-size:13px;">' +
+        (isKo ? '잠시 후 다시 시도해 주세요.' : 'Please try again later.') + '</div>';
     });
 };
 
-// ── Auth 상태 감지 (새로고침 시 세션 유지) ──
+// ── 기관 대시보드 채팅 목록 ──
+function loadOrgChatList() {
+  var listEl = document.getElementById('org-chatlist');
+  if (!listEl) return;
+  var user = auth.currentUser;
+  if (!user) return;
+  var isKo = curLang === 'ko';
+
+  listEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--t3);font-size:13px;">불러오는 중...</div>';
+
+  db.collection('volunteers')
+    .where('status', 'in', ['matched', 'done'])
+    .orderBy('flightDate', 'asc')
+    .get()
+    .then(function(snap) {
+      var mine = snap.docs.filter(function(d) { return d.data().orgEmail === user.email; });
+      if (!mine.length) {
+        listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">매칭 완료 후 채팅방이 생성됩니다 💬</div>';
+        return;
+      }
+      listEl.innerHTML = mine.map(function(doc) {
+        var v = doc.data(); var vid = doc.id;
+        var stBg2  = v.status === 'done' ? '#E8F7F0' : '#EFF6FF';
+        var stClr2 = v.status === 'done' ? '#2D9E6B' : '#2563EB';
+        var stLbl  = isKo ? (v.status==='done'?'이동완료':'매칭완료') : (v.status==='done'?'Completed':'Matched');
+        var dogCnt = (v.matchedDogs && v.matchedDogs.length) ? v.matchedDogs.length : (v.matchedDog ? 1 : 0);
+        var dogBadge = dogCnt ? ' 🐾 ' + dogCnt + (isKo?'마리':'') : '';
+        return '<div class="card" style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:13px 14px;margin-bottom:8px;" onclick="openOrgChatRoom(\'' + vid + '\')">' +
+          '<div style="width:44px;height:44px;border-radius:50%;background:#FFF0EB;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">👤</div>' +
+          '<div style="flex:1;min-width:0;">' +
+          '<div style="font-weight:700;font-size:14px;">' + (v.name||'봉사자') + dogBadge + '</div>' +
+          '<div style="font-size:12px;color:var(--t2);margin-top:2px;">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') + '</div>' +
+          (v.kakao ? '<div style="font-size:11px;color:var(--t3);">💬 카카오: ' + v.kakao + '</div>' : '') +
+          '</div>' +
+          '<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:9px;background:' + stBg2 + ';color:' + stClr2 + ';flex-shrink:0;">' + stLbl + '</span>' +
+          '</div>';
+      }).join('');
+    })
+    .catch(function() {
+      // fallback — 인덱스 없는 경우
+      listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--re);font-size:13px;">' +
+        (isKo ? '잠시 후 다시 시도해 주세요.' : 'Please try again later.') + '</div>';
+    });
+}
+
+// 기관이 대시보드에서 채팅방 열기 — s-chatroom으로 이동
+function openOrgChatRoom(volId) {
+  // 기관은 s-orgdash에서 s-chatroom으로 전환
+  document.getElementById('s-orgdash').style.display = 'none';
+  openChatRoom(volId);
+  // 채팅방 닫기 버튼을 누르면 기관 대시보드로 복귀
+  var origClose = closeChatRoom;
+  closeChatRoom = function() {
+    if (chatUnsubscribe) { chatUnsubscribe(); chatUnsubscribe = null; }
+    curChatRoom = null;
+    document.getElementById('s-chatroom').style.display = 'none';
+    document.getElementById('s-orgdash').style.display = 'flex';
+    closeChatRoom = origClose; // restore
+  };
+}
+
+
 auth.onAuthStateChanged(function(user) {
   if (user) {
     // 슈퍼어드민
@@ -2238,21 +2353,27 @@ auth.onAuthStateChanged(function(user) {
 // v2.1 · 19개 수정 추가 기능
 // ══════════════════════════════════════════
 
-// ── Fix 4: 봉사자 항공편 수정/삭제 ──
-function editMyFlight(volId, data) {
-  // 수정할 필드를 프롬프트로 간단히 처리
-  var newFlightNo = prompt('항공편 번호 수정 (현재: ' + (data.flightNo||'') + '):', data.flightNo||'');
-  if (newFlightNo === null) return;
-  var newDate = prompt('출발 날짜 수정 (현재: ' + (data.flightDate||'') + ', 형식: YYYY-MM-DD):', data.flightDate||'');
-  if (newDate === null) return;
-
-  db.collection('volunteers').doc(volId).update({
-    flightNo: newFlightNo.trim().toUpperCase(),
-    flightDate: newDate.trim()
-  }).then(function() {
-    alert('수정되었습니다 🐾');
-    var user = auth.currentUser;
-    if (user) loadMyFlights(user.email);
+// ── Fix 4 v2.3: 봉사자 항공편 수정/삭제 ──
+function editMyFlight(volId) {
+  db.collection('volunteers').doc(volId).get().then(function(doc) {
+    if (!doc.exists) { alert('항공편 정보를 찾을 수 없습니다.'); return; }
+    var data = doc.data();
+    var newFlightNo = prompt('항공편 번호 수정 (현재: ' + (data.flightNo||'') + '):', data.flightNo||'');
+    if (newFlightNo === null) return;
+    var newDate = prompt('출발 날짜 수정 (현재: ' + (data.flightDate||'') + ', 형식: YYYY-MM-DD):', data.flightDate||'');
+    if (newDate === null) return;
+    if (!newFlightNo.trim() || !newDate.trim()) {
+      alert('항공편 번호와 날짜를 입력해 주세요.');
+      return;
+    }
+    db.collection('volunteers').doc(volId).update({
+      flightNo:   newFlightNo.trim().toUpperCase(),
+      flightDate: newDate.trim()
+    }).then(function() {
+      alert('수정되었습니다 🐾');
+      var user = auth.currentUser;
+      if (user) loadMyFlights(user.email);
+    }).catch(function(e) { alert('오류: ' + e.message); });
   }).catch(function(e) { alert('오류: ' + e.message); });
 }
 
@@ -2524,56 +2645,118 @@ document.addEventListener('DOMContentLoaded', function() {
   if (fnoEl) fnoEl.placeholder = 'KE 035';
 });
 
-// ── Fix 15: 봉사자 프로필에 이름 표시 ──
+// ── Fix 15 v2.3: 봉사자 프로필 — 항공편 카드(수정/삭제) + 매칭 강아지 정보 + 긴급매칭 내역 ──
 var _origLoadMyFlights = loadMyFlights;
 loadMyFlights = function(email) {
   var listEl = document.getElementById('vol-my-flights');
   if (!listEl) return;
   var isKo = curLang === 'ko';
 
+  listEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--t3);font-size:13px;">불러오는 중...</div>';
+
   db.collection('volunteers')
     .where('email', '==', email)
     .orderBy('createdAt', 'desc')
     .get()
     .then(function(snap) {
+      // ── 이름 업데이트 ──
+      if (!snap.empty) {
+        var firstVol = snap.docs[0].data();
+        var nameEl = document.getElementById('home-username');
+        if (nameEl && firstVol.name) nameEl.textContent = firstVol.name;
+      }
+
       if (snap.empty) {
-        listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px;">' +
-          (isKo ? '등록된 항공편이 없어요' : 'No flights registered') + '</div>';
+        listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--t3);font-size:13px;">' +
+          (isKo ? '아직 등록된 항공편이 없어요<br><span style="font-size:11px;">아래 버튼으로 첫 항공편을 등록해보세요!</span>' :
+                  'No flights registered yet<br><span style="font-size:11px;">Register your first flight below!</span>') + '</div>';
         return;
       }
+
       var stMap_ko = { booked:'예약완료', matched:'매칭완료', done:'이동완료' };
       var stMap_en = { booked:'Booked',   matched:'Matched',  done:'Completed' };
       var stColor  = { booked:'#FF8C00',  matched:'#3B82F6',  done:'#2D9E6B' };
       var stBg     = { booked:'#FFF5E6',  matched:'#EFF6FF',  done:'#E8F7F0' };
 
-      // 이름 표시 업데이트
-      var firstVol = snap.docs[0].data();
-      var nameEl = document.getElementById('home-username');
-      if (nameEl && firstVol.name) nameEl.textContent = firstVol.name;
-
-      listEl.innerHTML = snap.docs.map(function(doc) {
+      // 매칭된 강아지 정보를 포함해서 렌더링 (Promise.all)
+      var promises = snap.docs.map(function(doc) {
         var v = doc.data(); var vid = doc.id; var st = v.status || 'booked';
-        var stLabel = isKo ? (stMap_ko[st]||st) : (stMap_en[st]||st);
-        var canEdit = (st === 'booked');
-        return '<div class="card" style="margin-bottom:8px;">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
-          '<div style="font-weight:700;font-size:13px;">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + '</div>' +
-          '<span style="font-size:10px;padding:2px 8px;border-radius:9px;font-weight:700;background:' + (stBg[st]||'#FFF5E6') + ';color:' + (stColor[st]||'#FF8C00') + ';">' + stLabel + '</span>' +
-          '</div>' +
-          '<div style="font-size:12px;color:var(--t2);">ICN → ATL · ' + (v.flightDate||'') + '</div>' +
-          (v.name ? '<div style="font-size:12px;color:var(--t2);">👤 ' + v.name + '</div>' : '') +
-          (v.kakao ? '<div style="font-size:12px;color:var(--t2);">💬 ' + v.kakao + '</div>' : '') +
-          (st === 'matched' ? '<div style="font-size:12px;color:var(--gr);margin-top:4px;font-weight:600;">🎉 ' + (isKo?'매칭완료! 기관에서 연락이 올 거예요':'Matched! The org will contact you.') + '</div>' : '') +
-          (canEdit ? '<div style="display:flex;gap:6px;margin-top:8px;">' +
-            '<button onclick="editMyFlight(\'' + vid + '\',' + JSON.stringify({flightNo:v.flightNo,flightDate:v.flightDate}).replace(/"/g,"'") + ')" style="font-size:10px;padding:3px 10px;border-radius:8px;background:#EFF6FF;color:#3B82F6;border:none;cursor:pointer;font-family:inherit;">' + (isKo?'수정':'Edit') + '</button>' +
-            '<button onclick="deleteMyFlight(\'' + vid + '\')" style="font-size:10px;padding:3px 10px;border-radius:8px;background:#FCEBEB;color:#A32D2D;border:none;cursor:pointer;font-family:inherit;">' + (isKo?'삭제':'Delete') + '</button>' +
-            '</div>' : '') +
-          '</div>';
-      }).join('');
+
+        // 매칭된 강아지 fetch (matchedDogs 배열 또는 matchedDog 단일)
+        var dogIds = v.matchedDogs && v.matchedDogs.length ? v.matchedDogs
+                   : (v.matchedDog ? [v.matchedDog] : []);
+
+        var dogPromise = dogIds.length > 0
+          ? Promise.all(dogIds.map(function(did) {
+              return db.collection('dogs').doc(did).get()
+                .then(function(dd) { return dd.exists ? dd.data() : null; })
+                .catch(function() { return null; });
+            }))
+          : Promise.resolve([]);
+
+        return dogPromise.then(function(dogs) {
+          dogs = dogs.filter(Boolean);
+          var stLabel  = isKo ? (stMap_ko[st]||st) : (stMap_en[st]||st);
+          var canEdit  = (st === 'booked');
+
+          // 강아지 정보 카드
+          var dogHtml = '';
+          if (dogs.length > 0) {
+            dogHtml = '<div style="background:#FFF5E6;border-radius:10px;padding:10px 12px;margin-top:8px;">' +
+              '<div style="font-size:11px;font-weight:700;color:#FF8C00;margin-bottom:6px;">🐾 ' +
+              (isKo ? '매칭된 강아지' : 'Matched Dogs') + ' (' + dogs.length + '마리)</div>' +
+              dogs.map(function(d) {
+                var photoEl = d.photo
+                  ? '<img src="' + d.photo + '" style="width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0;">'
+                  : '<div style="width:32px;height:32px;border-radius:8px;background:' + (d.orgColor||'#FFE0CC') + ';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">' + (d.orgIco||'🐶') + '</div>';
+                return '<div style="display:flex;align-items:center;gap:8px;' + (dogs.indexOf(d)>0?'margin-top:6px;':'') + '">' +
+                  photoEl +
+                  '<div><div style="font-size:12px;font-weight:700;">' + (d.urgent?'⚡ ':'') + d.name +
+                  ' <span style="font-weight:400;color:var(--t2);">· ' + d.breed + ' · ' + d.weight + 'kg</span></div>' +
+                  '<div style="font-size:11px;color:var(--t2);">📍 ' + (d.org||'') + ' · → ' + (d.dest||'ATL') + '</div></div></div>';
+              }).join('') + '</div>';
+          }
+
+          // 매칭완료 안내
+          var matchedMsg = '';
+          if (st === 'matched') {
+            matchedMsg = '<div style="display:flex;align-items:center;gap:6px;margin-top:8px;background:#EFF6FF;border-radius:10px;padding:9px 12px;">' +
+              '<span style="font-size:16px;">🎉</span>' +
+              '<div style="font-size:12px;color:#2563EB;font-weight:600;">' +
+              (isKo ? '매칭완료! 채팅탭에서 기관과 소통하세요.' : 'Matched! Chat with the org in the Chat tab.') +
+              '<button onclick="setTab(\'chat\');closeVolProfile();" style="display:block;margin-top:4px;background:var(--sk);color:#fff;border:none;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">' +
+              (isKo ? '채팅방 열기 →' : 'Open Chat →') + '</button></div></div>';
+          }
+
+          // 수정/삭제 버튼
+          var editHtml = canEdit
+            ? '<div style="display:flex;gap:6px;margin-top:8px;">' +
+              '<button onclick="editMyFlight(\'' + vid + '\')" style="flex:1;font-size:11px;padding:6px;border-radius:8px;background:#EFF6FF;color:#3B82F6;border:none;cursor:pointer;font-family:inherit;font-weight:600;">' + (isKo?'✏️ 수정':'✏️ Edit') + '</button>' +
+              '<button onclick="deleteMyFlight(\'' + vid + '\')" style="flex:1;font-size:11px;padding:6px;border-radius:8px;background:#FCEBEB;color:#A32D2D;border:none;cursor:pointer;font-family:inherit;font-weight:600;">' + (isKo?'🗑 삭제':'🗑 Delete') + '</button>' +
+              '</div>' : '';
+
+          return '<div class="card" style="margin-bottom:10px;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+            '<div style="font-weight:700;font-size:14px;">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + '</div>' +
+            '<span style="font-size:10px;padding:3px 9px;border-radius:9px;font-weight:700;background:' + (stBg[st]||'#FFF5E6') + ';color:' + (stColor[st]||'#FF8C00') + ';">' + stLabel + '</span>' +
+            '</div>' +
+            '<div style="font-size:12px;color:var(--t2);">📅 ICN → ATL · ' + (v.flightDate||'') + '</div>' +
+            (v.name  ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;">👤 ' + v.name + (v.nation?' · '+v.nation:'') + '</div>' : '') +
+            (v.kakao ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;">💬 ' + v.kakao + '</div>' : '') +
+            dogHtml + matchedMsg + editHtml +
+            '</div>';
+        });
+      });
+
+      Promise.all(promises).then(function(cards) {
+        listEl.innerHTML = cards.join('');
+      });
     })
-    .catch(function() {
-      listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px;">' +
-        (isKo ? '잠시 후 다시 시도해 주세요.' : 'Please try again later.') + '</div>';
+    .catch(function(e) {
+      var msg = e && e.message && e.message.indexOf('index') > -1
+        ? (isKo ? '데이터 로딩 오류입니다. 문의: pawstclass.1@gmail.com' : 'Data loading error. Contact: pawstclass.1@gmail.com')
+        : (isKo ? '잠시 후 다시 시도해 주세요.' : 'Please try again later.');
+      listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--re);font-size:13px;">' + msg + '</div>';
     });
 };
 
