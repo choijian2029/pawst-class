@@ -793,13 +793,18 @@ function loadVolunteers() {
 }
 
 // ── 매칭 모달 ──
-var selectedVolId = null;
-var selectedDogId = null;
-var cachedDogs    = [];
+var selectedVolId  = null;
+var selectedDogIds = [];   // 최대 2마리 (배열)
+var cachedDogs     = [];
+// 하위 호환: selectedDogId → selectedDogIds[0]
+Object.defineProperty(window, 'selectedDogId', {
+  get: function() { return selectedDogIds[0] || null; },
+  set: function(v) { selectedDogIds = v ? [v] : []; }
+});
 
 function openMatchModal(volId) {
-  selectedVolId = volId;
-  selectedDogId = null;
+  selectedVolId  = volId;
+  selectedDogIds = [];
 
   // 봉사자 정보 표시
   db.collection('volunteers').doc(volId).get().then(function(doc) {
@@ -827,7 +832,13 @@ function openMatchModal(volId) {
         return;
       }
       document.getElementById('mm-confirm').style.display = 'block';
-      document.getElementById('mm-dog-list').innerHTML = snap.docs.map(function(doc) {
+
+      // 안내 문구 (최대 2마리)
+      var isKo = curLang === 'ko';
+      var guideHtml = '<div style="background:#FFF5E6;border-radius:10px;padding:9px 12px;font-size:12px;color:#854F0B;margin-bottom:10px;">' +
+        '🐾 ' + (isKo ? '한 항공편당 최대 <b>2마리</b>까지 선택할 수 있습니다.' : 'You can select up to <b>2 dogs</b> per flight.') + '</div>';
+
+      document.getElementById('mm-dog-list').innerHTML = guideHtml + snap.docs.map(function(doc) {
         var d = doc.data();
         var photoHtml = d.photo
           ? '<img src="' + d.photo + '" style="width:40px;height:40px;border-radius:9px;object-fit:cover;flex-shrink:0;">'
@@ -836,64 +847,126 @@ function openMatchModal(volId) {
           photoHtml +
           '<div style="flex:1;"><div style="font-weight:700;font-size:13px;">' + (d.urgent?'⚡ ':'') + d.name + '</div>' +
           '<div style="font-size:11px;color:var(--t2);">' + d.breed + ' · ' + d.weight + 'kg · ' + (d.dateFrom||'') + ' ~ ' + (d.dateTo||'') + '</div></div>' +
+          '<div class="match-dog-check" id="mdog-chk-' + doc.id + '" style="width:20px;height:20px;border-radius:50%;border:2px solid #E8E0D8;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;"></div>' +
           '</div>';
       }).join('');
+
+      updateMatchCount();
     });
 
   document.getElementById('mm').classList.add('on');
 }
 
 function selectDog(dogId) {
-  selectedDogId = dogId;
-  document.querySelectorAll('.match-dog-item').forEach(function(el) { el.classList.remove('on'); });
-  var el = document.getElementById('mdog-' + dogId);
-  if (el) el.classList.add('on');
+  var isKo = curLang === 'ko';
+  var idx  = selectedDogIds.indexOf(dogId);
+
+  if (idx > -1) {
+    // 이미 선택된 항목 → 해제
+    selectedDogIds.splice(idx, 1);
+  } else {
+    // 최대 2마리 제한
+    if (selectedDogIds.length >= 2) {
+      // 선택 불가 시각적 피드백 (흔들기)
+      var el = document.getElementById('mdog-' + dogId);
+      if (el) {
+        el.style.transition = 'transform 0.1s';
+        el.style.transform  = 'translateX(4px)';
+        setTimeout(function() { el.style.transform = 'translateX(-4px)'; }, 100);
+        setTimeout(function() { el.style.transform = 'translateX(0)'; },  200);
+      }
+      alert(isKo ? '한 항공편당 최대 2마리까지만 매칭할 수 있습니다.' : 'You can only match up to 2 dogs per flight.');
+      return;
+    }
+    selectedDogIds.push(dogId);
+  }
+
+  // UI 업데이트 — 선택된 항목 강조
+  cachedDogs.forEach(function(doc) {
+    var item = document.getElementById('mdog-' + doc.id);
+    var chk  = document.getElementById('mdog-chk-' + doc.id);
+    if (!item || !chk) return;
+    var sel = selectedDogIds.indexOf(doc.id) > -1;
+    item.classList.toggle('on', sel);
+    chk.style.background   = sel ? 'var(--or)' : '';
+    chk.style.borderColor  = sel ? 'var(--or)' : '#E8E0D8';
+    chk.textContent        = sel ? '✓' : '';
+    chk.style.color        = sel ? '#fff' : '';
+  });
+
+  updateMatchCount();
+}
+
+// 선택 카운트 표시 + 버튼 텍스트 갱신
+function updateMatchCount() {
+  var isKo = curLang === 'ko';
+  var btn  = document.getElementById('mm-confirm');
+  if (!btn) return;
+  var cnt = selectedDogIds.length;
+  if (cnt === 0) {
+    btn.textContent = isKo ? '강아지를 선택해 주세요' : 'Please select a dog';
+    btn.style.opacity = '.5';
+    btn.style.cursor  = 'not-allowed';
+  } else {
+    btn.textContent = isKo ? '매칭 확정 🐾 (' + cnt + '마리)' : 'Confirm Match 🐾 (' + cnt + ')';
+    btn.style.opacity = '1';
+    btn.style.cursor  = 'pointer';
+  }
 }
 
 function confirmMatch() {
-  if (!selectedVolId || !selectedDogId) {
-    alert('강아지를 선택해주세요.');
+  var isKo = curLang === 'ko';
+  if (!selectedVolId || selectedDogIds.length === 0) {
+    alert(isKo ? '강아지를 선택해주세요.' : 'Please select a dog.');
     return;
   }
   var btn = document.getElementById('mm-confirm');
-  btn.textContent = '매칭 중...';
+  btn.textContent = isKo ? '매칭 중...' : 'Matching...';
   btn.style.opacity = '.6';
 
   // ── 중복 매칭 방지: 봉사자 현재 상태 확인 ──
   db.collection('volunteers').doc(selectedVolId).get().then(function(doc) {
     var v = doc.data();
     if (v.status !== 'booked') {
-      btn.textContent = '매칭 확정 🐾';
+      btn.textContent = isKo ? '매칭 확정 🐾' : 'Confirm Match 🐾';
       btn.style.opacity = '1';
       clMo('mm');
-      alert('이미 매칭된 봉사자입니다. 새로고침 후 다시 확인해주세요.');
+      alert(isKo ? '이미 매칭된 봉사자입니다. 새로고침 후 다시 확인해주세요.' : 'Already matched. Please refresh and try again.');
       return;
     }
 
     var batch = db.batch();
+    // 봉사자 업데이트 — matchedDogs 배열로 저장
     batch.update(db.collection('volunteers').doc(selectedVolId), {
-      status: 'matched',
-      matchedDog: selectedDogId
+      status:      'matched',
+      matchedDog:  selectedDogIds[0],          // 하위호환
+      matchedDogs: selectedDogIds              // 다마리 지원
     });
-    batch.update(db.collection('dogs').doc(selectedDogId), {
-      status: 'matched',
-      matchedVol: selectedVolId
+    // 강아지 각각 업데이트
+    selectedDogIds.forEach(function(dogId) {
+      batch.update(db.collection('dogs').doc(dogId), {
+        status:     'matched',
+        matchedVol: selectedVolId
+      });
     });
 
     batch.commit()
       .then(function() {
-        btn.textContent = '매칭 확정 🐾';
+        btn.textContent = isKo ? '매칭 확정 🐾' : 'Confirm Match 🐾';
         btn.style.opacity = '1';
         clMo('mm');
-        alert('🎉 매칭이 완료되었습니다! 봉사자에게 카카오톡으로 연락해주세요.');
+        var cnt = selectedDogIds.length;
+        alert('🎉 ' + (isKo
+          ? '매칭이 완료되었습니다! (' + cnt + '마리) 봉사자에게 카카오톡으로 연락해주세요.'
+          : 'Matching complete! (' + cnt + ' dog' + (cnt>1?'s':'') + ') Please contact the volunteer via KakaoTalk.'));
       })
       .catch(function(e) {
-        btn.textContent = '매칭 확정 🐾';
+        btn.textContent = isKo ? '매칭 확정 🐾' : 'Confirm Match 🐾';
         btn.style.opacity = '1';
         alert('오류: ' + e.message);
       });
   }).catch(function(e) {
-    btn.textContent = '매칭 확정 🐾';
+    btn.textContent = isKo ? '매칭 확정 🐾' : 'Confirm Match 🐾';
     btn.style.opacity = '1';
     alert('오류: ' + e.message);
   });
@@ -1515,15 +1588,17 @@ function sendChatMsg() {
 }
 
 // ── 매칭 확정 시 채팅방 자동 생성 ──
-function createChatRoom(volId, orgName, volName) {
+function createChatRoom(volId, orgName, volName, dogInfoText) {
   db.collection('chats').doc(volId).set({
     created: firebase.firestore.FieldValue.serverTimestamp(),
     orgName: orgName,
     volName: volName
   }, { merge: true }).then(function() {
-    // 시스템 메시지 자동 발송
+    // 시스템 메시지 자동 발송 — 강아지 정보 포함
+    var sysMsg = '🎉 매칭이 완료되었습니다! 이 채팅방에서 소통해주세요 🐾';
+    if (dogInfoText) sysMsg += '\n\n' + dogInfoText;
     db.collection('chats').doc(volId).collection('messages').add({
-      text: '🎉 매칭이 완료되었습니다! 이 채팅방에서 소통해주세요 🐾',
+      text: sysMsg,
       senderName: 'PAWST CLASS',
       senderType: 'system',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1541,16 +1616,39 @@ setTab = function(t) {
 // ── confirmMatch에 채팅방 생성 연결 ──
 var _origConfirmMatch = confirmMatch;
 confirmMatch = function() {
+  var snapVolId  = selectedVolId;
+  var snapDogIds = selectedDogIds.slice();
   _origConfirmMatch();
   // 매칭 후 채팅방 생성 (0.5초 후)
   setTimeout(function() {
-    if (selectedVolId) {
-      db.collection('volunteers').doc(selectedVolId).get().then(function(doc) {
-        var v = doc.data();
-        var orgInfo = ORG_MAP[v.orgEmail] || { name: v.org || '기관' };
-        createChatRoom(selectedVolId, orgInfo.name, v.name || '봉사자');
+    if (!snapVolId) return;
+    db.collection('volunteers').doc(snapVolId).get().then(function(doc) {
+      var v = doc.data();
+      var orgInfo = ORG_MAP[v.orgEmail] || { name: v.org || '기관' };
+
+      // 강아지 정보 모아서 자동 메시지 생성
+      if (snapDogIds.length === 0) {
+        createChatRoom(snapVolId, orgInfo.name, v.name || '봉사자', null);
+        return;
+      }
+      var dogInfoLines = [];
+      var fetched = 0;
+      snapDogIds.forEach(function(dogId) {
+        db.collection('dogs').doc(dogId).get().then(function(ddoc) {
+          if (ddoc.exists) {
+            var d = ddoc.data();
+            dogInfoLines.push('🐾 ' + d.name + ' · ' + d.breed + ' · ' + d.weight + 'kg (' + (d.dateFrom||'') + ' ~ ' + (d.dateTo||'') + ')');
+          }
+          fetched++;
+          if (fetched === snapDogIds.length) {
+            var dogInfoText = '📋 매칭된 강아지 정보:\n' + dogInfoLines.join('\n') +
+              '\n\n✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') +
+              '\n👤 봉사자: ' + (v.name||'') + (v.kakao ? ' · 💬 ' + v.kakao : '');
+            createChatRoom(snapVolId, orgInfo.name, v.name || '봉사자', dogInfoText);
+          }
+        });
       });
-    }
+    });
   }, 500);
 };
 
@@ -1943,9 +2041,19 @@ function doVolSignup() {
       btn.textContent = isKo ? '회원가입' : 'Sign Up';
       btn.style.opacity = '1';
       if (e.code === 'auth/email-already-in-use') {
-        showVolErr(isKo ? '이미 가입된 이메일입니다. 로그인 탭을 이용해 주세요.' : 'Email already in use. Please login.');
+        showVolErr(isKo ? '이미 가입된 이메일입니다. 로그인 탭을 이용해 주세요.' : 'Email already in use. Please log in instead.');
+      } else if (e.code === 'auth/invalid-email') {
+        showVolErr(isKo ? '이메일 형식이 올바르지 않습니다. (예: name@gmail.com)' : 'Invalid email format. (e.g. name@gmail.com)');
+      } else if (e.code === 'auth/weak-password') {
+        showVolErr(isKo ? '비밀번호는 6자 이상이어야 합니다.' : 'Password must be at least 6 characters.');
+      } else if (e.code === 'auth/missing-email') {
+        showVolErr(isKo ? '이메일을 입력해 주세요.' : 'Please enter your email.');
+      } else if (e.code === 'auth/network-request-failed') {
+        showVolErr(isKo ? '네트워크 연결을 확인해 주세요.' : 'Please check your network connection.');
+      } else if (e.code === 'auth/too-many-requests') {
+        showVolErr(isKo ? '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' : 'Too many requests. Please try again later.');
       } else {
-        showVolErr(isKo ? '가입 중 오류가 발생했습니다. 다시 시도해 주세요.' : 'Signup error. Please try again.');
+        showVolErr(isKo ? '가입 중 오류가 발생했습니다. 다시 시도해 주세요. (' + e.code + ')' : 'Signup error. Please try again. (' + e.code + ')');
       }
     });
 }
