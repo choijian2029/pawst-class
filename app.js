@@ -441,64 +441,280 @@ function sStar(n) {
     s.classList.toggle('on', i < n);
   });
 }
-function togRF() {
-  var f = document.getElementById('rev-form');
-  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+// ══════════════════════════════
+// 후기 기능 v2.6 — Firestore 연동
+// ══════════════════════════════
+
+var _revStars = 5; // 현재 선택 별점
+
+// ── 별점 선택 ──
+function sStar(n) {
+  _revStars = n;
+  for (var i = 1; i <= 5; i++) {
+    var el = document.getElementById('rstar-' + n + '-' + i);
+    if (el) el.classList.toggle('on', i <= n);
+  }
 }
-function ldPh(e) {
-  var file = e.target.files[0];
-  if (!file) return;
-  var r = new FileReader();
-  r.onload = function(ev) {
-    document.getElementById('ph-img').src = ev.target.result;
-    document.getElementById('ph-prev').style.display = 'block';
-    document.getElementById('ph-drop').style.display = 'none';
-  };
-  r.readAsDataURL(file);
-}
-function rmPh() {
-  document.getElementById('ph-img').src = '';
-  document.getElementById('ph-prev').style.display = 'none';
-  document.getElementById('ph-drop').style.display = 'block';
-  document.getElementById('ph-inp').value = '';
-}
-function subRev() {
-  var isKo = curLang === 'ko';
-  var txt = document.getElementById('rev-txt').value.trim();
-  var errMsg = isKo ? '후기 내용을 입력해 주세요.' : 'Please write your review.';
-  if (!txt) { alert(errMsg); return; }
-  var img = document.getElementById('ph-img');
-  var ph = img && img.src && img.src.length > 10 ? img.src : null;
-  revs.unshift({ n: isKo?'나':'Me', d: new Date().toLocaleDateString('ko'), r: cStar, txt_ko: txt, txt_en: txt, route:'ICN→ATL', ph: ph });
-  document.getElementById('rev-txt').value = '';
-  rmPh(); togRF(); rRevs();
-}
+
+// ── 후기 탭 진입 시 호출 ──
 function rRevs() {
-  var isKo = curLang === 'ko';
-  document.getElementById('gal').innerHTML = revs.map(function(r) {
-    return r.ph
-      ? '<img src="' + r.ph + '" style="flex-shrink:0;width:70px;height:70px;border-radius:12px;object-fit:cover;">'
-      : '<div style="flex-shrink:0;width:70px;height:70px;border-radius:12px;background:#FFF5E6;display:flex;align-items:center;justify-content:center;font-size:26px;">🐾</div>';
-  }).join('');
-
-  document.getElementById('rev-list').innerHTML = revs.map(function(r) {
-    var st = ''; for (var i = 0; i < r.r; i++) st += '★';
-    var txt = isKo ? r.txt_ko : r.txt_en;
-    var img = r.ph ? '<img src="' + r.ph + '" style="width:100%;height:140px;object-fit:cover;">' : '';
-    return '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">' + img +
-      '<div style="padding:14px;">' +
-      '<div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;">' +
-      '<div style="width:34px;height:34px;border-radius:50%;background:#FFF5E6;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">👤</div>' +
-      '<div style="flex:1;"><div style="font-weight:700;font-size:14px;">' + r.n + '</div><div style="font-size:11px;color:#9CA3AF;">' + r.route + ' · ' + r.d + '</div></div>' +
-      '<div style="color:#F59E0B;font-size:13px;font-weight:700;">' + st + '</div>' +
-      '</div>' +
-      '<p style="font-size:13px;line-height:1.7;color:#6B7280;margin:0;">' + txt + '</p>' +
-      '</div></div>';
-  }).join('');
+  loadRevWriteSection();
+  loadRevList();
 }
 
-// ── INIT ──
-rRevs();
+// ── 작성 가능한 매칭 목록 표시 ──
+function loadRevWriteSection() {
+  var sec = document.getElementById('rev-write-section');
+  if (!sec) return;
+  var user = auth.currentUser;
+  var isKo = curLang === 'ko';
+
+  if (!user) {
+    sec.innerHTML = '<div style="background:#FFF5E6;border-radius:12px;padding:14px;font-size:13px;color:var(--t2);text-align:center;margin-bottom:8px;">' +
+      (isKo ? '로그인 후 후기를 작성할 수 있습니다.' : 'Please login to write a review.') + '</div>';
+    return;
+  }
+
+  var isOrg = !!ORG_MAP[user.email];
+
+  // done 상태 매칭 조회
+  var query = isOrg
+    ? db.collection('volunteers').where('status', '==', 'done').orderBy('flightDate', 'desc')
+    : db.collection('volunteers').where('email', '==', user.email).where('status', '==', 'done');
+
+  query.get().then(function(snap) {
+    var mine = isOrg
+      ? snap.docs.filter(function(d) { return d.data().orgEmail === user.email; })
+      : snap.docs;
+
+    if (!mine.length) {
+      sec.innerHTML = '<div style="background:#F3F4F6;border-radius:12px;padding:14px;font-size:13px;color:var(--t2);text-align:center;margin-bottom:8px;">' +
+        (isKo ? '이동완료된 매칭이 없어요. 이동완료 후 후기를 작성할 수 있습니다.' :
+                'No completed transports yet. You can write a review after completion.') + '</div>';
+      return;
+    }
+
+    // 이미 후기 작성한 matchId 목록 조회
+    db.collection('reviews')
+      .where('authorUid', '==', user.uid)
+      .get()
+      .then(function(revSnap) {
+        var writtenIds = {};
+        revSnap.docs.forEach(function(d) { writtenIds[d.data().matchId] = true; });
+
+        var cards = mine.map(function(doc) {
+          var v = doc.data(); var vid = doc.id;
+          var already = writtenIds[vid];
+          var orgInfo  = ORG_MAP[v.orgEmail] || { name: v.org||'기관', ico:'🏥' };
+          var partner  = isOrg ? (v.name||'봉사자') : orgInfo.name;
+          var partIco  = isOrg ? '👤' : orgInfo.ico;
+
+          return '<div class="card" style="margin-bottom:10px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+            '<div style="width:38px;height:38px;border-radius:50%;background:#FFF5E6;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">' + partIco + '</div>' +
+            '<div style="flex:1;">' +
+            '<div style="font-weight:700;font-size:13px;">' + partner + '</div>' +
+            '<div style="font-size:11px;color:var(--t2);">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') + '</div>' +
+            '</div>' +
+            '<span style="font-size:10px;padding:3px 8px;border-radius:9px;background:#E8F7F0;color:#2D9E6B;font-weight:700;">' + (isKo?'이동완료':'Completed') + '</span>' +
+            '</div>' +
+            (already
+              ? '<div style="text-align:center;padding:8px;background:#F3F4F6;border-radius:10px;font-size:12px;color:var(--t2);">✅ ' + (isKo?'후기를 이미 작성했어요':'Review already submitted') + '</div>'
+              : '<button onclick="openRevModal(\'' + vid + '\',\'' + partner.replace(/'/g,"\\'") + '\')" class="btn-pr" style="width:100%;padding:9px;font-size:13px;">✏️ ' + (isKo?'후기 작성하기':'Write a Review') + '</button>'
+            ) +
+            '</div>';
+        });
+
+        sec.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--t2);margin-bottom:8px;">✍️ ' +
+          (isKo ? '후기 작성 가능한 이동' : 'Write a Review') + '</div>' +
+          cards.join('');
+      })
+      .catch(function() { sec.innerHTML = ''; });
+  }).catch(function() { sec.innerHTML = ''; });
+}
+
+// ── 후기 작성 모달 열기 ──
+function openRevModal(matchId, partnerName) {
+  var isKo = curLang === 'ko';
+  var existing = document.getElementById('rev-modal');
+  if (existing) existing.remove();
+
+  _revStars = 5;
+
+  var modal = document.createElement('div');
+  modal.id = 'rev-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+
+  // 별점 HTML
+  var starHtml = '';
+  for (var i = 1; i <= 5; i++) {
+    starHtml += '<button id="rstar-' + matchId + '-' + i + '" onclick="selectRevStar(' + i + ',\'' + matchId + '\')" ' +
+      'style="background:none;border:none;font-size:28px;cursor:pointer;color:' + (i <= 5 ? '#F59E0B' : '#E5E7EB') + ';padding:2px;">★</button>';
+  }
+
+  modal.innerHTML =
+    '<div style="background:var(--wh);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:22px;max-height:80vh;overflow-y:auto;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">' +
+    '<div style="font-size:16px;font-weight:800;">✏️ ' + (isKo ? '후기 작성' : 'Write a Review') + '</div>' +
+    '<button onclick="document.getElementById(\'rev-modal\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--t2);">×</button>' +
+    '</div>' +
+
+    '<div style="text-align:center;margin-bottom:14px;">' +
+    '<div style="font-size:13px;color:var(--t2);margin-bottom:8px;">' + (isKo ? '상대방' : 'Partner') + ': <b>' + partnerName + '</b></div>' +
+    '<div id="rev-stars-' + matchId + '">' + starHtml + '</div>' +
+    '<div id="rev-star-label" style="font-size:12px;color:#F59E0B;font-weight:700;margin-top:4px;">★★★★★ ' + (isKo?'최고예요!':'Excellent!') + '</div>' +
+    '</div>' +
+
+    '<textarea id="rev-textarea" class="fi" style="height:100px;resize:none;display:block;margin-bottom:14px;" ' +
+    'placeholder="' + (isKo ? '이동봉사 경험을 공유해 주세요... (10자 이상)' : 'Share your transport experience... (10+ chars)') + '"></textarea>' +
+
+    '<div id="rev-modal-err" style="display:none;color:var(--re);font-size:12px;margin-bottom:10px;"></div>' +
+    '<button onclick="submitRevModal(\'' + matchId + '\')" class="btn-pr">' + (isKo ? '후기 등록' : 'Submit Review') + '</button>' +
+    '<button onclick="document.getElementById(\'rev-modal\').remove()" class="btn-sec" style="margin-top:8px;">' + (isKo?'취소':'Cancel') + '</button>' +
+    '</div>';
+
+  document.body.appendChild(modal);
+}
+
+// ── 별점 선택 (모달용) ──
+function selectRevStar(n, matchId) {
+  _revStars = n;
+  var labels = { 1:'⭐ 별로예요', 2:'⭐⭐ 그저 그래요', 3:'⭐⭐⭐ 보통이에요', 4:'⭐⭐⭐⭐ 좋아요!', 5:'⭐⭐⭐⭐⭐ 최고예요!' };
+  var labelsEn = { 1:'⭐ Poor', 2:'⭐⭐ Fair', 3:'⭐⭐⭐ Okay', 4:'⭐⭐⭐⭐ Good!', 5:'⭐⭐⭐⭐⭐ Excellent!' };
+  for (var i = 1; i <= 5; i++) {
+    var el = document.getElementById('rstar-' + matchId + '-' + i);
+    if (el) el.style.color = i <= n ? '#F59E0B' : '#E5E7EB';
+  }
+  var labelEl = document.getElementById('rev-star-label');
+  if (labelEl) labelEl.textContent = (curLang === 'ko' ? labels : labelsEn)[n] || '';
+}
+
+// ── 후기 Firestore 저장 ──
+function submitRevModal(matchId) {
+  var user = auth.currentUser;
+  if (!user) return;
+  var isKo   = curLang === 'ko';
+  var txt    = (document.getElementById('rev-textarea').value || '').trim();
+  var errEl  = document.getElementById('rev-modal-err');
+
+  if (txt.length < 10) {
+    errEl.textContent = isKo ? '후기를 10자 이상 작성해 주세요.' : 'Please write at least 10 characters.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  var isOrg   = !!ORG_MAP[user.email];
+  var orgInfo = isOrg ? ORG_MAP[user.email] : null;
+
+  // matchId(=volId)로 봉사자 정보 조회
+  db.collection('volunteers').doc(matchId).get().then(function(doc) {
+    if (!doc.exists) { errEl.textContent = '매칭 정보를 찾을 수 없습니다.'; errEl.style.display = 'block'; return; }
+    var v = doc.data();
+
+    var review = {
+      matchId:      matchId,
+      authorUid:    user.uid,
+      authorEmail:  user.email,
+      authorType:   isOrg ? 'org' : 'volunteer',
+      authorName:   isOrg ? (orgInfo ? orgInfo.name : '기관') : (v.name || user.email),
+      targetName:   isOrg ? (v.name || '봉사자') : (ORG_MAP[v.orgEmail] ? ORG_MAP[v.orgEmail].name : v.org || '기관'),
+      rating:       _revStars,
+      text:         txt,
+      airline:      v.airline || '',
+      flightNo:     v.flightNo || '',
+      flightDate:   v.flightDate || '',
+      createdAt:    firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    db.collection('reviews').add(review).then(function() {
+      document.getElementById('rev-modal').remove();
+      alert(isKo ? '후기가 등록되었습니다 🐾 감사합니다!' : 'Review submitted 🐾 Thank you!');
+      rRevs(); // 목록 새로고침
+    }).catch(function(e) {
+      errEl.textContent = '오류: ' + e.message;
+      errEl.style.display = 'block';
+    });
+  });
+}
+
+// ── 전체 후기 목록 불러오기 ──
+function loadRevList() {
+  var listEl = document.getElementById('rev-list');
+  if (!listEl) return;
+  var isKo = curLang === 'ko';
+
+  listEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--t3);font-size:13px;">불러오는 중...</div>';
+
+  db.collection('reviews')
+    .orderBy('createdAt', 'desc')
+    .limit(30)
+    .get()
+    .then(function(snap) {
+      if (snap.empty) {
+        listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">' +
+          '<div style="font-size:36px;margin-bottom:8px;">⭐</div>' +
+          (isKo ? '아직 후기가 없어요. 첫 번째 후기를 남겨보세요!' : 'No reviews yet. Be the first to write one!') + '</div>';
+        return;
+      }
+
+      listEl.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--t2);margin-bottom:10px;">⭐ ' +
+        (isKo ? '전체 후기 ' : 'All Reviews ') + '(' + snap.size + ')' + '</div>' +
+        snap.docs.map(function(doc) {
+          var r = doc.data();
+          var stars = '';
+          for (var i = 0; i < 5; i++) stars += i < r.rating ? '<span style="color:#F59E0B;">★</span>' : '<span style="color:#E5E7EB;">★</span>';
+          var typeLabel = r.authorType === 'org'
+            ? '<span style="font-size:10px;background:#EFF6FF;color:#2563EB;padding:2px 7px;border-radius:8px;font-weight:700;">🏥 기관</span>'
+            : '<span style="font-size:10px;background:#FFF5E6;color:#FF8C00;padding:2px 7px;border-radius:8px;font-weight:700;">✈️ 봉사자</span>';
+          var dateStr = r.createdAt ? new Date(r.createdAt.seconds * 1000).toLocaleDateString('ko') : '';
+
+          return '<div class="card" style="margin-bottom:10px;">' +
+            '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">' +
+            '<div style="width:36px;height:36px;border-radius:50%;background:#FFF5E6;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">' +
+            (r.authorType === 'org' ? '🏥' : '👤') + '</div>' +
+            '<div style="flex:1;min-width:0;">' +
+            '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
+            '<span style="font-weight:700;font-size:13px;">' + (r.authorName||'') + '</span>' + typeLabel +
+            '</div>' +
+            '<div style="font-size:11px;color:var(--t2);margin-top:2px;">→ ' + (r.targetName||'') + ' · ✈️ ' + (r.airline||'') + ' ' + (r.flightNo||'') + ' · ' + (r.flightDate||'') + '</div>' +
+            '</div>' +
+            '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;">' +
+            '<div style="font-size:14px;">' + stars + '</div>' +
+            '<div style="font-size:10px;color:var(--t3);">' + dateStr + '</div>' +
+            '</div>' +
+            '</div>' +
+            '<p style="font-size:13px;line-height:1.7;color:#374151;margin:0;padding-top:8px;border-top:1px solid var(--br);">' + r.text + '</p>' +
+            '</div>';
+        }).join('');
+    })
+    .catch(function(e) {
+      // 인덱스 없을 경우 createdAt 없이 재시도
+      db.collection('reviews').limit(30).get().then(function(snap2) {
+        if (snap2.empty) {
+          listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;"><div style="font-size:36px;margin-bottom:8px;">⭐</div>' +
+            (isKo ? '아직 후기가 없어요.' : 'No reviews yet.') + '</div>';
+          return;
+        }
+        // 간단히 표시
+        listEl.innerHTML = snap2.docs.map(function(doc) {
+          var r = doc.data();
+          var stars = '';
+          for (var i = 0; i < 5; i++) stars += i < r.rating ? '★' : '☆';
+          return '<div class="card" style="margin-bottom:10px;">' +
+            '<div style="font-weight:700;">' + (r.authorName||'') + ' <span style="color:#F59E0B;">' + stars + '</span></div>' +
+            '<div style="font-size:11px;color:var(--t2);">→ ' + (r.targetName||'') + '</div>' +
+            '<p style="font-size:13px;color:#374151;margin:8px 0 0;">' + r.text + '</p>' +
+            '</div>';
+        }).join('');
+      });
+    });
+}
+
+// 기존 함수 하위호환 유지
+function togRF() {}
+function subRev() {}
+function ldPh() {}
+function rmPh() {}
 
 // ── FIREBASE 화면 전환 ──
 // ── 현재 화면 추적 (백버튼 처리용) ──
