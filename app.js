@@ -292,6 +292,7 @@ function rAdm() {
 // ── FLIGHT MATCH MODAL ──
 function opFM(i) {
   var f = fls[i];
+  _curFM = f; // 긴급매칭 신청 시 참조용
   var isKo = curLang === 'ko';
   var dt   = isKo ? f.dt_ko : f.dt_en;
   var dogs = isKo ? f.dogs_ko : f.dogs_en;
@@ -320,7 +321,23 @@ function opFM(i) {
   document.getElementById('fm').classList.add('on');
 }
 
-function showS() { document.getElementById('sm').classList.add('on'); }
+function showS() {
+  // 로그인 상태면 Firestore에 긴급매칭 신청 저장
+  var user = auth.currentUser;
+  if (user && !ORG_MAP[user.email]) {
+    // 현재 열린 긴급매칭 카드 정보 (opFM에서 설정한 _curFM)
+    var fm = typeof _curFM !== 'undefined' ? _curFM : null;
+    db.collection('urgentRequests').add({
+      volunteerUid:   user.uid,
+      volunteerEmail: user.email,
+      orgName:        fm ? fm.org : '기관',
+      flightDate:     fm ? (fm.dt_ko || '') : '',
+      createdAt:      firebase.firestore.FieldValue.serverTimestamp(),
+      status:         'pending'
+    }).catch(function() {});
+  }
+  document.getElementById('sm').classList.add('on');
+}
 function clMo(id) { document.getElementById(id).classList.remove('on'); }
 function opPrv() { document.getElementById('pm').classList.add('on'); }
 
@@ -797,11 +814,20 @@ function doLogin() {
       document.getElementById('dash-orgname').textContent = orgInfo.ico + ' ' + orgInfo.name;
       loadOrgDogs(email);
       scGo('s-orgdash');
-    })
     .catch(function(e) {
       btn.textContent = '로그인';
       btn.style.opacity = '1';
-      showErr('login-err', '이메일 또는 비밀번호가 올바르지 않습니다.');
+      if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+        showErr('login-err', '비밀번호가 올바르지 않습니다. 다시 확인해 주세요.');
+      } else if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-email') {
+        showErr('login-err', '등록되지 않은 이메일입니다. 이메일을 확인해 주세요.');
+      } else if (e.code === 'auth/too-many-requests') {
+        showErr('login-err', '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
+      } else if (e.code === 'auth/network-request-failed') {
+        showErr('login-err', '네트워크 연결을 확인해 주세요.');
+      } else {
+        showErr('login-err', '로그인 오류가 발생했습니다. (' + (e.code||'unknown') + ')');
+      }
     });
 }
 
@@ -2601,19 +2627,68 @@ function loadOrgChatList() {
     });
 }
 
-// 기관이 대시보드에서 채팅방 열기 — s-chatroom으로 이동
+// 기관이 대시보드에서 채팅방 열기
 function openOrgChatRoom(volId) {
-  // 기관은 s-orgdash에서 s-chatroom으로 전환
-  document.getElementById('s-orgdash').style.display = 'none';
-  openChatRoom(volId);
-  // 채팅방 닫기 버튼을 누르면 기관 대시보드로 복귀
-  var origClose = closeChatRoom;
+  // s-orgdash를 .sc 방식으로 숨기고 채팅방 표시
+  document.querySelectorAll('.sc').forEach(function(el) { el.classList.remove('on'); });
+
+  // 채팅방 직접 표시
+  curChatRoom = volId;
+  if (chatUnsubscribe) { chatUnsubscribe(); chatUnsubscribe = null; }
+
+  var cr = document.getElementById('s-chatroom');
+  cr.style.display = 'flex';
+  cr.style.flexDirection = 'column';
+
+  // 채팅방 정보 로드 — 기관 시점: 봉사자 이름/항공편 표시
+  db.collection('volunteers').doc(volId).get().then(function(doc) {
+    if (!doc.exists) return;
+    var v = doc.data();
+    document.getElementById('chatroom-title').textContent = '👤 ' + (v.name || '봉사자');
+    document.getElementById('chatroom-sub').textContent = '✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') + (v.kakao ? ' · 💬 ' + v.kakao : '');
+    var stEl = document.getElementById('chatroom-status');
+    stEl.textContent = v.status === 'matched' ? '매칭완료' : '이동완료';
+    stEl.style.background = v.status === 'matched' ? '#EFF6FF' : '#E8F7F0';
+    stEl.style.color = v.status === 'matched' ? '#2563EB' : '#2D9E6B';
+  });
+
+  // 메시지 실시간 로드
+  chatUnsubscribe = db.collection('chats').doc(volId).collection('messages')
+    .orderBy('createdAt', 'asc')
+    .onSnapshot(function(snap) {
+      var msgs = document.getElementById('chat-messages');
+      if (!msgs) return;
+      var user = auth.currentUser;
+      if (snap.empty) {
+        msgs.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">첫 메시지를 보내보세요 🐾</div>';
+        return;
+      }
+      msgs.innerHTML = snap.docs.map(function(d) {
+        var m = d.data();
+        var isMe = user && m.senderEmail === user.email;
+        var time = m.createdAt ? new Date(m.createdAt.seconds * 1000).toLocaleTimeString('ko', {hour:'2-digit', minute:'2-digit'}) : '';
+        return '<div style="display:flex;flex-direction:column;align-items:' + (isMe?'flex-end':'flex-start') + ';">' +
+          '<div style="font-size:10px;color:var(--t3);margin-bottom:3px;">' + (m.senderName||'') + '</div>' +
+          '<div style="border-radius:' + (isMe?'16px 16px 4px 16px':'16px 16px 16px 4px') + ';padding:10px 13px;font-size:13px;max-width:75%;white-space:pre-wrap;' +
+          (isMe ? 'background:var(--or);color:#fff;' : 'background:var(--wh);color:var(--tx);border:1px solid var(--bd);') + '">' +
+          m.text + '</div>' +
+          '<div style="font-size:10px;color:var(--t3);margin-top:3px;">' + time + '</div>' +
+          '</div>';
+      }).join('');
+      msgs.scrollTop = msgs.scrollHeight;
+    });
+
+  // 닫기 버튼 → 기관 대시보드로 복귀
+  var _prevClose = closeChatRoom;
   closeChatRoom = function() {
     if (chatUnsubscribe) { chatUnsubscribe(); chatUnsubscribe = null; }
     curChatRoom = null;
-    document.getElementById('s-chatroom').style.display = 'none';
-    document.getElementById('s-orgdash').style.display = 'flex';
-    closeChatRoom = origClose; // restore
+    cr.style.display = 'none';
+    // 기관 대시보드 복귀
+    document.querySelectorAll('.sc').forEach(function(el) { el.classList.remove('on'); });
+    var orgDash = document.getElementById('s-orgdash');
+    if (orgDash) orgDash.classList.add('on');
+    closeChatRoom = _prevClose;
   };
 }
 
@@ -2627,6 +2702,49 @@ auth.onAuthStateChanged(function(user) {
     // 봉사자
     currentVolUser = user;
     updateHomeUsername(user);
+
+    // ── 매칭 완료 팝업 (이동완료 전까지 로그인 시마다 표시) ──
+    db.collection('volunteers')
+      .where('email', '==', user.email)
+      .where('status', 'in', ['matched'])
+      .get()
+      .then(function(snap) {
+        if (snap.empty) return;
+        var v   = snap.docs[0].data();
+        var vid = snap.docs[0].id;
+        var isKo = curLang === 'ko';
+        var orgInfo = ORG_MAP[v.orgEmail] || { name: v.org||'기관', ico:'🏥' };
+
+        // 팝업 생성
+        var existing = document.getElementById('match-notify-popup');
+        if (existing) existing.remove();
+
+        var popup = document.createElement('div');
+        popup.id = 'match-notify-popup';
+        popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+        popup.innerHTML =
+          '<div style="background:var(--wh);border-radius:20px;width:100%;max-width:360px;padding:24px;text-align:center;">' +
+          '<div style="font-size:44px;margin-bottom:10px;">🎉</div>' +
+          '<div style="font-size:17px;font-weight:800;margin-bottom:6px;">' + (isKo?'매칭 완료!':'Match Complete!') + '</div>' +
+          '<div style="font-size:13px;color:var(--t2);margin-bottom:14px;">' +
+          (isKo ? '기관과 매칭되었습니다.' : 'You have been matched with an organization.') + '</div>' +
+          '<div style="background:#FFF5E6;border-radius:12px;padding:12px;margin-bottom:16px;text-align:left;">' +
+          '<div style="font-size:12px;color:#FF8C00;font-weight:700;margin-bottom:6px;">🐾 ' + (isKo?'매칭 정보':'Match Info') + '</div>' +
+          '<div style="font-size:13px;">🏥 ' + orgInfo.ico + ' ' + orgInfo.name + '</div>' +
+          '<div style="font-size:13px;margin-top:4px;">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') + '</div>' +
+          (snap.docs[0].data().matchedDogs && snap.docs[0].data().matchedDogs.length
+            ? '<div style="font-size:13px;margin-top:4px;">🐾 ' + snap.docs[0].data().matchedDogs.length + (isKo?'마리 배정':'dogs assigned') + '</div>' : '') +
+          '</div>' +
+          '<button onclick="document.getElementById(\'match-notify-popup\').remove();openVolChatRoom(\'' + vid + '\')" ' +
+          'style="width:100%;background:var(--or);color:#fff;border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;">💬 ' +
+          (isKo?'채팅방 바로 가기':'Go to Chat') + '</button>' +
+          '<button onclick="document.getElementById(\'match-notify-popup\').remove()" ' +
+          'style="width:100%;background:none;border:none;padding:10px;font-size:13px;color:var(--t2);cursor:pointer;font-family:inherit;">' +
+          (isKo?'나중에 확인하기':'Remind me later') + '</button>' +
+          '</div>';
+        document.body.appendChild(popup);
+      })
+      .catch(function() {});
   }
 });
 
@@ -3077,15 +3195,18 @@ loadMyFlights = function(email) {
               }).join('') + '</div>';
           }
 
-          // 매칭완료 안내
+          // 매칭완료 안내 + 채팅방 열기
           var matchedMsg = '';
-          if (st === 'matched') {
+          if (st === 'matched' || st === 'done') {
+            var chatBtnTxt = isKo ? '💬 채팅방 열기 →' : '💬 Open Chat →';
             matchedMsg = '<div style="display:flex;align-items:center;gap:6px;margin-top:8px;background:#EFF6FF;border-radius:10px;padding:9px 12px;">' +
-              '<span style="font-size:16px;">🎉</span>' +
-              '<div style="font-size:12px;color:#2563EB;font-weight:600;">' +
-              (isKo ? '매칭완료! 채팅탭에서 기관과 소통하세요.' : 'Matched! Chat with the org in the Chat tab.') +
-              '<button onclick="setTab(\'chat\');closeVolProfile();" style="display:block;margin-top:4px;background:var(--sk);color:#fff;border:none;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">' +
-              (isKo ? '채팅방 열기 →' : 'Open Chat →') + '</button></div></div>';
+              '<span style="font-size:16px;">' + (st==='done'?'✅':'🎉') + '</span>' +
+              '<div style="flex:1;font-size:12px;color:#2563EB;font-weight:600;">' +
+              (st==='done'
+                ? (isKo?'이동완료!':'Transport complete!')
+                : (isKo?'매칭완료! 기관과 소통하세요.':'Matched! Chat with the org.')) +
+              '<button onclick="openVolChatRoom(\'' + vid + '\')" style="display:block;margin-top:4px;background:var(--or);color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">' +
+              chatBtnTxt + '</button></div></div>';
           }
 
           // 수정/삭제 버튼
@@ -3110,6 +3231,8 @@ loadMyFlights = function(email) {
 
       Promise.all(promises).then(function(cards) {
         listEl.innerHTML = cards.join('');
+        // 긴급매칭 신청 내역 섹션 추가
+        loadUrgentRequestSection(email, listEl, isKo);
       });
     })
     .catch(function(e) {
@@ -3120,7 +3243,67 @@ loadMyFlights = function(email) {
     });
 };
 
-// ── Fix 16: 매칭 완료 후 후기 작성 유도 ──
+// ── 봉사자가 내 봉사정보에서 채팅방 바로 열기 ──
+function openVolChatRoom(volId) {
+  var vp = document.getElementById('s-volprofile');
+  if (vp) vp.style.display = 'none';
+  // 탭을 chat으로 전환 후 채팅방 열기
+  setTab('chat');
+  setTimeout(function() { openChatRoom(volId); }, 100);
+}
+
+// ── 긴급매칭 신청 내역 로드 ──
+function loadUrgentRequestSection(email, listEl, isKo) {
+  db.collection('urgentRequests')
+    .where('volunteerEmail', '==', email)
+    .orderBy('createdAt', 'desc')
+    .limit(10)
+    .get()
+    .then(function(snap) {
+      if (snap.empty) return;
+
+      var secHtml = '<div style="margin-top:16px;">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--t2);margin-bottom:8px;">🚨 ' +
+        (isKo ? '긴급매칭 신청 내역' : 'Urgent Match Requests') + '</div>' +
+        snap.docs.map(function(doc) {
+          var r = doc.data(); var rid = doc.id;
+          var stBg2  = r.status === 'matched' ? '#EFF6FF' : (r.status === 'cancelled' ? '#F3F4F6' : '#FFF5E6');
+          var stClr2 = r.status === 'matched' ? '#2563EB' : (r.status === 'cancelled' ? '#9CA3AF' : '#FF8C00');
+          var stLbl  = r.status === 'matched' ? (isKo?'매칭완료':'Matched')
+                     : r.status === 'cancelled' ? (isKo?'취소됨':'Cancelled')
+                     : (isKo?'신청중':'Pending');
+          var date   = r.createdAt ? new Date(r.createdAt.seconds * 1000).toLocaleDateString('ko') : '';
+          var canCancel = r.status === 'pending';
+
+          return '<div class="card" style="margin-bottom:8px;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+            '<div style="font-weight:700;font-size:13px;">🚨 ' + (r.orgName||'기관') + '</div>' +
+            '<span style="font-size:10px;padding:2px 8px;border-radius:9px;font-weight:700;background:' + stBg2 + ';color:' + stClr2 + ';">' + stLbl + '</span>' +
+            '</div>' +
+            '<div style="font-size:11px;color:var(--t2);">✈️ ICN → ATL · ' + (r.flightDate||'') + ' · 신청일: ' + date + '</div>' +
+            (canCancel
+              ? '<button onclick="cancelUrgentRequest(\'' + rid + '\')" style="margin-top:8px;width:100%;font-size:11px;padding:6px;border-radius:8px;background:#FCEBEB;color:#A32D2D;border:none;cursor:pointer;font-family:inherit;font-weight:600;">🗑 ' + (isKo?'신청 취소':'Cancel Request') + '</button>'
+              : '') +
+            '</div>';
+        }).join('') +
+        '</div>';
+
+      listEl.innerHTML += secHtml;
+    })
+    .catch(function() {}); // 인덱스 없으면 무시
+}
+
+// ── 긴급매칭 신청 취소 ──
+function cancelUrgentRequest(reqId) {
+  var isKo = curLang === 'ko';
+  if (!confirm(isKo ? '신청을 취소할까요?' : 'Cancel this request?')) return;
+  db.collection('urgentRequests').doc(reqId).update({ status: 'cancelled' })
+    .then(function() {
+      var user = auth.currentUser;
+      if (user) loadMyFlights(user.email);
+    })
+    .catch(function(e) { alert('오류: ' + e.message); });
+}
 var _origOrgMarkDone2 = orgMarkDone;
 orgMarkDone = function(volId, dogId) {
   if (!confirm('이동완료로 처리할까요?')) return;
