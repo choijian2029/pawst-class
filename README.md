@@ -62,6 +62,12 @@ I thought there had to be a better way. So I built one.
 | v2.0 | Jun 2, 2026 | Super admin dashboard — org management, full stats, match tracking |
 | v2.1 | Jun 4, 2026 | Volunteer login/signup, bug fixes — layout, tab buttons, checklist, edit/delete flights, password reset, auto-login, dog edit, duplicate prevention |
 | v2.2 | Jun 5, 2026 | Root-cause layout fix (scGo), login error messages, calendar privacy, post-register redirect, Firestore index error handling |
+| v2.3 | Jun 11, 2026 | Signup error messages by Firebase code, multi-dog matching (max 2), chat auto-message with dog info |
+| v2.4 | Jun 11, 2026 | Vol profile redesign — matched dog cards, chat button; chat restructure — org dashboard chat tab, org/vol chat room list |
+| v2.5 | Jun 11, 2026 | Flight edit full-field modal, checklist text fix, D-14~D+1 reminder timeline, Android back button with history stack |
+| v2.6 | Jun 11, 2026 | Review system — Firestore, star rating, volunteer/org distinction, duplicate prevention |
+| v2.7 | Jun 11, 2026 | Login error messages, urgent match request history + cancel, match complete popup, chat layout fix (position:fixed), org name display |
+| v2.8 | Jun 11, 2026 | App exit confirmation popup on back button, README update |
 
 ----
 

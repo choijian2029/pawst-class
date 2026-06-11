@@ -751,6 +751,10 @@ function scGo(id) {
 
 // ── 갤럭시/안드로이드 백버튼 (popstate) 처리 ──
 window.addEventListener('popstate', function(e) {
+  // 앱 종료 확인 팝업 열려 있으면 닫기
+  var exitPop = document.getElementById('app-exit-popup');
+  if (exitPop) { exitPop.remove(); window.history.pushState({}, '', ''); return; }
+
   // 수정 모달 열려 있으면 닫기
   var modal = document.getElementById('edit-flight-modal');
   if (modal) { modal.remove(); window.history.pushState({}, '', ''); return; }
@@ -783,7 +787,56 @@ window.addEventListener('popstate', function(e) {
     window.history.pushState({}, '', '');
     return;
   }
+
+  // 스플래시에서 백버튼 → 앱 종료 확인 팝업
+  if (_curScreen === 's-splash') {
+    showAppExitPopup();
+    window.history.pushState({}, '', '');
+    return;
+  }
 });
+
+// ── 앱 종료 확인 팝업 ──
+function showAppExitPopup() {
+  var existing = document.getElementById('app-exit-popup');
+  if (existing) return;
+  var isKo = curLang === 'ko';
+
+  var popup = document.createElement('div');
+  popup.id = 'app-exit-popup';
+  popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-end;justify-content:center;';
+  popup.innerHTML =
+    '<div style="background:var(--wh);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:28px 24px 32px;">' +
+    '<div style="text-align:center;margin-bottom:20px;">' +
+    '<div style="font-size:36px;margin-bottom:10px;">🐾</div>' +
+    '<div style="font-size:17px;font-weight:800;color:var(--tx);margin-bottom:6px;">' +
+    (isKo ? 'PAWST CLASS를 종료할까요?' : 'Exit PAWST CLASS?') + '</div>' +
+    '<div style="font-size:13px;color:var(--t2);">' +
+    (isKo ? '강아지들이 기다리고 있어요 🐶' : 'The pups are waiting for you 🐶') + '</div>' +
+    '</div>' +
+    '<button onclick="appExit()" style="width:100%;background:#1F2937;color:#fff;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px;">' +
+    (isKo ? '앱 종료' : 'Exit App') + '</button>' +
+    '<button onclick="document.getElementById(\'app-exit-popup\').remove()" style="width:100%;background:var(--or);color:#fff;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">' +
+    (isKo ? '계속 사용하기' : 'Keep Using') + '</button>' +
+    '</div>';
+
+  document.body.appendChild(popup);
+}
+
+// ── 앱 종료 실행 ──
+function appExit() {
+  // Android WebView / PWA 종료
+  if (window.Android && window.Android.exitApp) {
+    window.Android.exitApp();
+    return;
+  }
+  // 브라우저 탭 닫기 시도
+  window.close();
+  // window.close()가 막힌 경우 히스토리 비우고 빈 페이지로
+  setTimeout(function() {
+    window.location.href = 'about:blank';
+  }, 200);
+}
 
 // setTab override — _curTab 추적
 var _origSetTabNav = setTab;
