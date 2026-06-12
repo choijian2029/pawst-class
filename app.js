@@ -452,7 +452,7 @@ function togChip(el) {
 }
 
 // ── REVIEWS ──
-function sStar(n) {
+function sStarOld(n) {
   cStar = n;
   document.querySelectorAll('.star').forEach(function(s, i) {
     s.classList.toggle('on', i < n);
@@ -494,23 +494,37 @@ function loadRevWriteSection() {
 
   var isOrg = !!ORG_MAP[user.email];
 
-  // done 상태 매칭 조회
+  // 봉사자: email+status 쿼리 (인덱스 없으면 fallback)
+  // 기관: status==done 전체 조회 후 필터
   var query = isOrg
     ? db.collection('volunteers').where('status', '==', 'done').orderBy('flightDate', 'desc')
     : db.collection('volunteers').where('email', '==', user.email).where('status', '==', 'done');
 
-  query.get().then(function(snap) {
-    var mine = isOrg
-      ? snap.docs.filter(function(d) { return d.data().orgEmail === user.email; })
-      : snap.docs;
+  query.get()
+    .then(function(snap) {
+      var mine = isOrg
+        ? snap.docs.filter(function(d) { return d.data().orgEmail === user.email; })
+        : snap.docs;
+      renderRevWriteCards(mine, user, isOrg, sec, isKo);
+    })
+    .catch(function() {
+      // 복합 인덱스 없는 경우 fallback — email만으로 조회 후 클라이언트 필터
+      db.collection('volunteers').where('email', '==', user.email).get()
+        .then(function(s2) {
+          var done2 = s2.docs.filter(function(d) { return d.data().status === 'done'; });
+          renderRevWriteCards(done2, user, isOrg, sec, isKo);
+        })
+        .catch(function() { sec.innerHTML = ''; });
+    });
+}
 
+
+function renderRevWriteCards(mine, user, isOrg, sec, isKo) {
     if (!mine.length) {
       sec.innerHTML = '<div style="background:#F3F4F6;border-radius:12px;padding:14px;font-size:13px;color:var(--t2);text-align:center;margin-bottom:8px;">' +
-        (isKo ? '이동완료된 매칭이 없어요. 이동완료 후 후기를 작성할 수 있습니다.' :
-                'No completed transports yet. You can write a review after completion.') + '</div>';
+        (isKo ? '이동완료된 매칭이 없어요.' : 'No completed transports yet.') + '</div>';
       return;
     }
-
     // 이미 후기 작성한 matchId 목록 조회
     db.collection('reviews')
       .where('authorUid', '==', user.uid)
@@ -547,7 +561,6 @@ function loadRevWriteSection() {
           cards.join('');
       })
       .catch(function() { sec.innerHTML = ''; });
-  }).catch(function() { sec.innerHTML = ''; });
 }
 
 // ── 후기 작성 모달 열기 ──
@@ -865,8 +878,10 @@ function doLogin() {
       err.style.display = 'none';
       var orgInfo = ORG_MAP[email] || { name: email, ico: '🏥', color: '#FFF5E6' };
       document.getElementById('dash-orgname').textContent = orgInfo.ico + ' ' + orgInfo.name;
+      saveEmailToStorage(email, false); // 기관 이메일 저장
       loadOrgDogs(email);
       scGo('s-orgdash');
+    })
     .catch(function(e) {
       btn.textContent = '로그인';
       btn.style.opacity = '1';
@@ -882,6 +897,14 @@ function doLogin() {
         showErr('login-err', '로그인 오류가 발생했습니다. (' + (e.code||'unknown') + ')');
       }
     });
+}
+
+function loadOrgSavedEmail() {
+  var saved = loadSavedEmail(false);
+  if (saved) {
+    var el = document.getElementById('login-email');
+    if (el) el.value = saved;
+  }
 }
 
 function doLogout() {
@@ -1183,6 +1206,8 @@ function openMatchModal(volId) {
         return;
       }
       document.getElementById('mm-confirm').style.display = 'block';
+      document.getElementById('mm-confirm').style.opacity = '0.5';
+      document.getElementById('mm-confirm').style.cursor = 'not-allowed';
 
       // 안내 문구 (최대 2마리)
       var isKo = curLang === 'ko';
@@ -1940,6 +1965,11 @@ function openChatRoom(volId) {
       var msgs = document.getElementById('chat-messages');
       if (!msgs) return;
       var user = auth.currentUser;
+      // 빈 채팅방 안내
+      if (snap.empty) {
+        msgs.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">첫 메시지를 보내보세요 🐾</div>';
+        return;
+      }
       msgs.innerHTML = snap.docs.map(function(doc) {
         var m = doc.data();
         var isMe = user ? m.senderEmail === user.email : m.senderType === 'volunteer';
@@ -1953,11 +1983,6 @@ function openChatRoom(volId) {
           '</div>';
       }).join('');
       msgs.scrollTop = msgs.scrollHeight;
-
-      // 빈 채팅방 안내
-      if (snap.empty) {
-        msgs.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">첫 메시지를 보내보세요 🐾</div>';
-      }
     });
 }
 
@@ -2759,7 +2784,7 @@ auth.onAuthStateChanged(function(user) {
     // ── 매칭 완료 팝업 (이동완료 전까지 로그인 시마다 표시) ──
     db.collection('volunteers')
       .where('email', '==', user.email)
-      .where('status', 'in', ['matched'])
+      .where('status', '==', 'matched')
       .get()
       .then(function(snap) {
         if (snap.empty) return;
@@ -3298,14 +3323,47 @@ loadMyFlights = function(email) {
 
 // ── 봉사자가 내 봉사정보에서 채팅방 바로 열기 ──
 function openVolChatRoom(volId) {
+  // 봉사자 프로필 닫기
   var vp = document.getElementById('s-volprofile');
   if (vp) vp.style.display = 'none';
-  // 탭을 chat으로 전환 후 채팅방 열기
+  // 매칭 팝업 닫기
+  var pop = document.getElementById('match-notify-popup');
+  if (pop) pop.remove();
+  // 채팅 탭으로 전환 후 바로 해당 채팅방 열기
   setTab('chat');
-  setTimeout(function() { openChatRoom(volId); }, 100);
+  setTimeout(function() {
+    openChatRoom(volId);
+  }, 150);
 }
 
 // ── 긴급매칭 신청 내역 로드 ──
+// ── 긴급매칭 내역 렌더 헬퍼 ──
+function renderUrgentSection(docs, listEl, isKo) {
+  if (!docs || !docs.length) return;
+  var secHtml = '<div style="margin-top:16px;">' +
+    '<div style="font-size:13px;font-weight:700;color:var(--t2);margin-bottom:8px;">🚨 ' +
+    (isKo ? '긴급매칭 신청 내역' : 'Urgent Match Requests') + '</div>' +
+    docs.map(function(doc) {
+      var r = doc.data(); var rid = doc.id;
+      var stBg2  = r.status === 'matched' ? '#EFF6FF' : (r.status === 'cancelled' ? '#F3F4F6' : '#FFF5E6');
+      var stClr2 = r.status === 'matched' ? '#2563EB' : (r.status === 'cancelled' ? '#9CA3AF' : '#FF8C00');
+      var stLbl  = r.status === 'matched' ? (isKo?'매칭완료':'Matched')
+                 : r.status === 'cancelled' ? (isKo?'취소됨':'Cancelled')
+                 : (isKo?'신청중':'Pending');
+      var date   = r.createdAt ? new Date(r.createdAt.seconds * 1000).toLocaleDateString('ko') : '';
+      var canCancel = r.status === 'pending';
+      return '<div class="card" style="margin-bottom:8px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+        '<div style="font-weight:700;font-size:13px;">🚨 ' + (r.orgName||'기관') + '</div>' +
+        '<span style="font-size:10px;padding:2px 8px;border-radius:9px;font-weight:700;background:' + stBg2 + ';color:' + stClr2 + ';">' + stLbl + '</span>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--t2);">✈️ ICN → ATL · ' + (r.flightDate||'') + ' · 신청일: ' + date + '</div>' +
+        (canCancel ? '<button onclick="cancelUrgentRequest(\'' + rid + '\')" style="margin-top:8px;width:100%;font-size:11px;padding:6px;border-radius:8px;background:#FCEBEB;color:#A32D2D;border:none;cursor:pointer;font-family:inherit;font-weight:600;">🗑 ' + (isKo?'신청 취소':'Cancel Request') + '</button>' : '') +
+        '</div>';
+    }).join('') + '</div>';
+  listEl.innerHTML += secHtml;
+}
+
 function loadUrgentRequestSection(email, listEl, isKo) {
   db.collection('urgentRequests')
     .where('volunteerEmail', '==', email)
@@ -3314,36 +3372,24 @@ function loadUrgentRequestSection(email, listEl, isKo) {
     .get()
     .then(function(snap) {
       if (snap.empty) return;
-
-      var secHtml = '<div style="margin-top:16px;">' +
-        '<div style="font-size:13px;font-weight:700;color:var(--t2);margin-bottom:8px;">🚨 ' +
-        (isKo ? '긴급매칭 신청 내역' : 'Urgent Match Requests') + '</div>' +
-        snap.docs.map(function(doc) {
-          var r = doc.data(); var rid = doc.id;
-          var stBg2  = r.status === 'matched' ? '#EFF6FF' : (r.status === 'cancelled' ? '#F3F4F6' : '#FFF5E6');
-          var stClr2 = r.status === 'matched' ? '#2563EB' : (r.status === 'cancelled' ? '#9CA3AF' : '#FF8C00');
-          var stLbl  = r.status === 'matched' ? (isKo?'매칭완료':'Matched')
-                     : r.status === 'cancelled' ? (isKo?'취소됨':'Cancelled')
-                     : (isKo?'신청중':'Pending');
-          var date   = r.createdAt ? new Date(r.createdAt.seconds * 1000).toLocaleDateString('ko') : '';
-          var canCancel = r.status === 'pending';
-
-          return '<div class="card" style="margin-bottom:8px;">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
-            '<div style="font-weight:700;font-size:13px;">🚨 ' + (r.orgName||'기관') + '</div>' +
-            '<span style="font-size:10px;padding:2px 8px;border-radius:9px;font-weight:700;background:' + stBg2 + ';color:' + stClr2 + ';">' + stLbl + '</span>' +
-            '</div>' +
-            '<div style="font-size:11px;color:var(--t2);">✈️ ICN → ATL · ' + (r.flightDate||'') + ' · 신청일: ' + date + '</div>' +
-            (canCancel
-              ? '<button onclick="cancelUrgentRequest(\'' + rid + '\')" style="margin-top:8px;width:100%;font-size:11px;padding:6px;border-radius:8px;background:#FCEBEB;color:#A32D2D;border:none;cursor:pointer;font-family:inherit;font-weight:600;">🗑 ' + (isKo?'신청 취소':'Cancel Request') + '</button>'
-              : '') +
-            '</div>';
-        }).join('') +
-        '</div>';
-
-      listEl.innerHTML += secHtml;
+      renderUrgentSection(snap.docs, listEl, isKo);
     })
-    .catch(function() {}); // 인덱스 없으면 무시
+    .catch(function() {
+      // 인덱스 없는 경우 fallback — email만으로 조회
+      db.collection('urgentRequests')
+        .where('volunteerEmail', '==', email)
+        .get()
+        .then(function(snap2) {
+          if (snap2.empty) return;
+          var items = snap2.docs.sort(function(a,b) {
+            var ta = a.data().createdAt ? a.data().createdAt.seconds : 0;
+            var tb = b.data().createdAt ? b.data().createdAt.seconds : 0;
+            return tb - ta;
+          });
+          renderUrgentSection(items, listEl, isKo);
+        })
+        .catch(function() {});
+    });
 }
 
 // ── 긴급매칭 신청 취소 ──
@@ -3415,10 +3461,10 @@ doVolLogin = function() {
   _origDoVolLogin2();
 };
 
-// ── loadOrgVolsV2를 기관 대시보드에 연결 ──
-var _origSetOrgDashTab = setOrgDashTab;
-setOrgDashTab = function(t) {
-  _origSetOrgDashTab(t);
+// ── loadOrgVolsV2를 기관 대시보드 탭에 연결 ──
+var _origSetDashTabOrg = setDashTab;
+setDashTab = function(t) {
+  _origSetDashTabOrg(t);
   if (t === 'vols') {
     var user = auth.currentUser;
     if (user) loadOrgVolsV2(user.email);
