@@ -3526,3 +3526,65 @@ function editDogById(dogId) {
 document.addEventListener('DOMContentLoaded', function() {
   window.history.replaceState({ screen: 's-splash', tab: 'home' }, '', '');
 });
+
+// ── 스플래시 캔버스 파티클 (🐾 부유 효과) ──
+document.addEventListener('DOMContentLoaded', function() {
+  var canvas = document.getElementById('splash-canvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width  = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // 파티클 생성
+  var particles = [];
+  var EMOJIS = ['🐾', '🐾', '🐾', '✈️', '🐶', '🐾'];
+  for (var i = 0; i < 18; i++) {
+    particles.push({
+      x:     Math.random() * canvas.width,
+      y:     Math.random() * canvas.height,
+      emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
+      size:  Math.random() * 14 + 8,
+      vx:    (Math.random() - .5) * .4,
+      vy:    -Math.random() * .5 - .2,
+      alpha: Math.random() * .35 + .1,
+      rot:   Math.random() * Math.PI * 2,
+      vrot:  (Math.random() - .5) * .01,
+    });
+  }
+
+  var active = true;
+  var scEl = document.getElementById('s-splash');
+
+  function draw() {
+    if (!active) return;
+    // 스플래시 화면이 활성 상태일 때만 그리기
+    if (scEl && !scEl.classList.contains('on')) {
+      requestAnimationFrame(draw);
+      return;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(function(p) {
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.font = p.size + 'px serif';
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillText(p.emoji, -p.size/2, p.size/2);
+      ctx.restore();
+      p.x   += p.vx;
+      p.y   += p.vy;
+      p.rot += p.vrot;
+      // 화면 밖 나가면 아래서 재진입
+      if (p.y < -20) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; }
+      if (p.x < -20) p.x = canvas.width + 20;
+      if (p.x > canvas.width + 20) p.x = -20;
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+});
