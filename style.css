@@ -153,14 +153,16 @@ body {
 }
 #splash-title {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 700;
   color: #FFFFFF;
-  letter-spacing: 3px;
+  letter-spacing: 1.5px;
   margin-top: 22px;
   opacity: 0;
   transform: translateY(12px);
   transition: opacity 0.5s ease, transform 0.5s ease;
+  text-align: center;
+  padding: 0 16px;
 }
 #splash-title.show {
   opacity: 1;
@@ -168,12 +170,15 @@ body {
 }
 #splash-sub {
   font-family: Arial, sans-serif;
-  font-size: 10px;
+  font-size: 9px;
   color: rgba(255,255,255,0.85);
-  letter-spacing: 3px;
+  letter-spacing: 1.8px;
   margin-top: 8px;
   opacity: 0;
   transition: opacity 0.5s ease 0.15s;
+  text-align: center;
+  padding: 0 12px;
+  word-spacing: 1px;
 }
 #splash-sub.show { opacity: 0.8; }
 #splash-divider {

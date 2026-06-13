@@ -779,13 +779,13 @@ window.addEventListener('popstate', function(e) {
   // history 스택 항상 유지 (브라우저 뒤로가기 방지)
   window.history.pushState({}, '', '');
 
-  // ① 매칭 팝업 열려 있으면 닫기
-  var matchPop = document.getElementById('match-notify-popup');
-  if (matchPop) { matchPop.remove(); return; }
-
-  // ② 앱 종료 확인 팝업 열려 있으면 닫기
+  // ① 앱 종료 확인 팝업 열려 있으면 닫기 (최우선)
   var exitPop = document.getElementById('app-exit-popup');
   if (exitPop) { exitPop.remove(); return; }
+
+  // ② 매칭 팝업 열려 있으면 닫기
+  var matchPop = document.getElementById('match-notify-popup');
+  if (matchPop) { matchPop.remove(); return; }
 
   // ③ 후기 작성 모달 열려 있으면 닫기
   var revModal = document.getElementById('rev-modal');
@@ -1528,25 +1528,23 @@ function initCal() {
 // ── Firestore에서 봉사 일정 불러오기 ──
 function loadCalEvents() {
   calEvents = [];
-  // 봉사자 본인 항공편 (로컬 스토리지 임시 — 로그인 없는 봉사자용)
-  var saved = localStorage.getItem('pawst_flight');
-  if (saved) {
-    try {
-      var f = JSON.parse(saved);
-      if (f.flightDate) calEvents.push({ date: f.flightDate, type: 'flight', label: '✈️ ' + (f.airline||'') + ' ' + (f.flightNo||''), org: f.org||'' });
-    } catch(e) {}
-  }
-  // 로그인한 봉사자 본인 항공편만 표시 (타인 일정 노출 방지)
   var calUser = auth.currentUser;
+
   if (calUser) {
+    // ── 로그인 상태: Firestore에서 본인 항공편만 (localStorage 무시)
     db.collection('volunteers')
       .where('email', '==', calUser.email)
       .get()
       .then(function(snap) {
+        var seen = {}; // 날짜+항공편번호 중복 방지
         snap.forEach(function(doc) {
           var v = doc.data();
           if (v.flightDate) {
-            calEvents.push({ date: v.flightDate, type: 'flight', label: '✈️ ' + (v.airline||'') + ' ' + (v.flightNo||''), volName: v.name||'', id: doc.id });
+            var key = v.flightDate + '_' + (v.flightNo||'');
+            if (!seen[key]) {
+              seen[key] = true;
+              calEvents.push({ date: v.flightDate, type: 'flight', label: '✈️ ' + (v.airline||'') + ' ' + (v.flightNo||''), volName: v.name||'', id: doc.id });
+            }
           }
         });
         renderCal();
@@ -1554,7 +1552,14 @@ function loadCalEvents() {
       })
       .catch(function() { renderCal(); renderReminders(); });
   } else {
-    // 비로그인: 로컬스토리지 데이터만 표시
+    // ── 비로그인: 로컬스토리지만 사용
+    var saved = localStorage.getItem('pawst_flight');
+    if (saved) {
+      try {
+        var f = JSON.parse(saved);
+        if (f.flightDate) calEvents.push({ date: f.flightDate, type: 'flight', label: '✈️ ' + (f.airline||'') + ' ' + (f.flightNo||''), org: f.org||'' });
+      } catch(e) {}
+    }
     renderCal();
     renderReminders();
   }
@@ -2064,7 +2069,12 @@ function sendChatMsg() {
 
   var user = auth.currentUser;
   var isOrgUser  = user && !!ORG_MAP[user.email];
-  var senderName = user ? (isOrgUser ? ORG_MAP[user.email].name : user.email) : '봉사자';
+  // 봉사자: Firestore에서 이름 가져오기 (없으면 이메일 앞부분)
+  var senderName = user
+    ? (isOrgUser
+        ? ORG_MAP[user.email].name
+        : (user.displayName || user.email.split('@')[0]))
+    : '봉사자';
   var senderType = isOrgUser ? 'org' : 'volunteer';
 
   inp.value = '';
