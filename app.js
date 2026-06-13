@@ -2737,16 +2737,19 @@ loadChatRooms = function() {
       }
       listEl.innerHTML = snap.docs.map(function(doc) {
         var v = doc.data(); var vid = doc.id;
-        var orgInfo = ORG_MAP[v.orgEmail] || { name: v.org||'기관', ico:'🏥', color:'#FFF5E6' };
+        var orgEmail2 = v.orgEmail || '';
+        var orgInfo   = ORG_MAP[orgEmail2] || { name: v.org || (isKo?'기관':'Org'), ico:'🏥', color:'#FFF5E6' };
+        var orgName2  = orgInfo.name !== (isKo?'기관':'Org') ? orgInfo.name
+                      : orgEmail2 ? orgEmail2.split('@')[0] : (v.org || (isKo?'기관':'Org'));
         var stBg2   = v.status === 'done' ? '#E8F7F0' : '#EFF6FF';
         var stClr2  = v.status === 'done' ? '#2D9E6B' : '#2563EB';
         var stLbl   = isKo ? (v.status==='done'?'이동완료':'매칭완료') : (v.status==='done'?'Completed':'Matched');
         return '<div class="card" style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:13px 14px;margin-bottom:8px;" onclick="openChatRoom(\'' + vid + '\')">' +
           '<div style="width:44px;height:44px;border-radius:50%;background:' + orgInfo.color + ';display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">' + orgInfo.ico + '</div>' +
           '<div style="flex:1;min-width:0;">' +
-          '<div style="font-weight:700;font-size:14px;">' + orgInfo.name + '</div>' +
+          '<div style="font-weight:700;font-size:14px;">' + orgName2 + '</div>' +
           '<div style="font-size:12px;color:var(--t2);margin-top:2px;">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') + '</div>' +
-          '<div style="font-size:11px;color:#6B7280;margin-top:1px;">🏥 ' + (isKo?'매칭된 기관':'Matched organization') + '</div>' +
+          '<div style="font-size:11px;color:#6B7280;margin-top:1px;">🏥 ' + orgName2 + '</div>' +
           '</div>' +
           '<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:9px;background:' + stBg2 + ';color:' + stClr2 + ';flex-shrink:0;">' + stLbl + '</span>' +
           '</div>';
