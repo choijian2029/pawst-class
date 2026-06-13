@@ -228,11 +228,14 @@ function setTab(t) {
   var el = document.getElementById('t-' + t);
   if (el) el.style.display = 'block';
 
-  document.querySelectorAll('.ni').forEach(function(b) { b.classList.remove('on'); });
-  var tabs = ['home','register','orgs','chat','calendar'];
-  var idx = tabs.indexOf(t);
-  var nb = document.querySelectorAll('.ni');
-  if (nb[idx]) nb[idx].classList.add('on');
+  document.querySelectorAll('.ni').forEach(function(b) {
+    b.classList.remove('on');
+    // onclick 속성에 현재 탭명이 포함되면 active
+    var oc = b.getAttribute('onclick') || '';
+    if (oc.indexOf("'" + t + "'") > -1 || oc.indexOf('"' + t + '"') > -1) {
+      b.classList.add('on');
+    }
+  });
 
   if (t === 'reviews') rRevs();
   scGo('s-main');
@@ -324,6 +327,15 @@ function opFM(i) {
 function showS() {
   // 로그인 상태면 Firestore에 긴급매칭 신청 저장
   var user = auth.currentUser;
+  if (!user) {
+    // 비로그인 → 로그인 유도
+    var isKo = curLang === 'ko';
+    if (confirm(isKo ? '로그인 후 신청할 수 있습니다. 로그인 화면으로 이동할까요?' :
+                       'Please login to apply. Go to login?')) {
+      scGo('s-vollogin');
+    }
+    return;
+  }
   if (user && !ORG_MAP[user.email]) {
     // 현재 열린 긴급매칭 카드 정보 (opFM에서 설정한 _curFM)
     var fm = typeof _curFM !== 'undefined' ? _curFM : null;
@@ -911,6 +923,8 @@ function doLogout() {
   auth.signOut().then(function() {
     document.getElementById('org-email').value = '';
     document.getElementById('org-pw').value = '';
+    var nav = document.getElementById('main-nav');
+    if (nav) nav.style.display = '';
     scGo('s-splash');
   });
 }
@@ -2001,8 +2015,9 @@ function sendChatMsg() {
   if (!txt || !curChatRoom) return;
 
   var user = auth.currentUser;
-  var senderName = user ? (ORG_MAP[user.email] ? ORG_MAP[user.email].name : user.email) : '봉사자';
-  var senderType = user ? 'org' : 'volunteer';
+  var isOrgUser  = user && !!ORG_MAP[user.email];
+  var senderName = user ? (isOrgUser ? ORG_MAP[user.email].name : user.email) : '봉사자';
+  var senderType = isOrgUser ? 'org' : 'volunteer';
 
   inp.value = '';
 
@@ -2297,14 +2312,22 @@ function deleteDog(dogId) {
 
 // ── 매칭 취소 (기관) ──
 function cancelMatch(dogId, volId) {
-  if (!confirm('매칭을 취소할까요?')) return;
+  if (!confirm('매칭을 취소할까요? 취소 후 다시 매칭해야 합니다.')) return;
   var batch = db.batch();
   batch.update(db.collection('dogs').doc(dogId), { status: 'waiting', matchedVol: null });
   if (volId) {
-    batch.update(db.collection('volunteers').doc(volId), { status: 'booked', matchedDog: null });
+    batch.update(db.collection('volunteers').doc(volId), {
+      status: 'booked',
+      matchedDog: null,
+      matchedDogs: [],
+      orgEmail: null
+    });
   }
   batch.commit()
-    .then(function() { alert('매칭이 취소되었습니다.'); })
+    .then(function() {
+      alert('매칭이 취소되었습니다.');
+      loadAdminMatch(); // 어드민 목록 새로고침
+    })
     .catch(function(e) { alert('오류: ' + e.message); });
 }
 
@@ -2498,9 +2521,19 @@ function goVolProfile() {
   pf.style.display = 'flex';
   pf.style.flexDirection = 'column';
 
-  // 이메일 표시
+  // 이름 표시 (이름 없으면 이메일)
   var emailEl = document.getElementById('prof-email');
-  if (emailEl) emailEl.textContent = user.email;
+  if (emailEl) {
+    // Firestore에서 이름 조회
+    db.collection('volunteers').where('email','==',user.email).orderBy('createdAt','desc').limit(1).get()
+      .then(function(s) {
+        if (!s.empty && s.docs[0].data().name) {
+          emailEl.textContent = s.docs[0].data().name;
+        } else {
+          emailEl.textContent = user.email;
+        }
+      }).catch(function() { emailEl.textContent = user.email; });
+  }
 
   // 내 항공편 불러오기
   loadMyFlights(user.email);
@@ -2791,7 +2824,7 @@ auth.onAuthStateChanged(function(user) {
         var v   = snap.docs[0].data();
         var vid = snap.docs[0].id;
         var isKo = curLang === 'ko';
-        var orgInfo = ORG_MAP[v.orgEmail] || { name: v.org||'기관', ico:'🏥' };
+        var orgInfo = ORG_MAP[v.orgEmail] || { name: v.org || (isKo ? '기관' : 'Organization'), ico:'🏥' };
 
         // 팝업 생성
         var existing = document.getElementById('match-notify-popup');
@@ -2934,14 +2967,25 @@ function saveMyFlight(volId) {
 }
 
 function deleteMyFlight(volId) {
-  if (!confirm('항공편 등록을 삭제할까요? 삭제 후 복구되지 않습니다.')) return;
-  db.collection('volunteers').doc(volId).delete()
-    .then(function() {
-      alert('삭제되었습니다.');
-      var user = auth.currentUser;
-      if (user) loadMyFlights(user.email);
-    })
-    .catch(function(e) { alert('오류: ' + e.message); });
+  var isKo = curLang === 'ko';
+  // 상태 확인 후 삭제 방지
+  db.collection('volunteers').doc(volId).get().then(function(doc) {
+    if (!doc.exists) { alert(isKo ? '항공편을 찾을 수 없습니다.' : 'Flight not found.'); return; }
+    var st = doc.data().status;
+    if (st === 'matched' || st === 'done') {
+      alert(isKo ? '매칭 또는 이동완료 상태의 항공편은 삭제할 수 없습니다. 취소가 필요하면 관리자에게 문의하세요.' : 'Cannot delete a matched or completed flight. Contact admin to cancel.');
+      return;
+    }
+    if (!confirm(isKo ? '항공편 등록을 삭제할까요? 삭제 후 복구되지 않습니다.' :
+                        'Delete this flight? This cannot be undone.')) return;
+    db.collection('volunteers').doc(volId).delete()
+      .then(function() {
+        alert(isKo ? '삭제되었습니다.' : 'Deleted.');
+        var user = auth.currentUser;
+        if (user) loadMyFlights(user.email);
+      })
+      .catch(function(e) { alert('오류: ' + e.message); });
+  }).catch(function(e) { alert('오류: ' + e.message); });
 }
 
 // ── Fix 5: 카카오ID 복사 버튼 ──
