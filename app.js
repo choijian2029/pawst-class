@@ -2826,13 +2826,14 @@ auth.onAuthStateChanged(function(user) {
         var isKo = curLang === 'ko';
         var orgInfo = ORG_MAP[v.orgEmail] || { name: v.org || (isKo ? '기관' : 'Organization'), ico:'🏥' };
 
-        // 팝업 생성
-        var existing = document.getElementById('match-notify-popup');
-        if (existing) existing.remove();
+        // 팝업 생성 — 스플래시 완료 후 표시
+        var showPopup = function() {
+          var existing = document.getElementById('match-notify-popup');
+          if (existing) existing.remove();
 
-        var popup = document.createElement('div');
-        popup.id = 'match-notify-popup';
-        popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+          var popup = document.createElement('div');
+          popup.id = 'match-notify-popup';
+          popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
         popup.innerHTML =
           '<div style="background:var(--wh);border-radius:20px;width:100%;max-width:360px;padding:24px;text-align:center;">' +
           '<div style="font-size:44px;margin-bottom:10px;">🎉</div>' +
@@ -2853,7 +2854,21 @@ auth.onAuthStateChanged(function(user) {
           'style="width:100%;background:none;border:none;padding:10px;font-size:13px;color:var(--t2);cursor:pointer;font-family:inherit;">' +
           (isKo?'나중에 확인하기':'Remind me later') + '</button>' +
           '</div>';
-        document.body.appendChild(popup);
+          document.body.appendChild(popup);
+        };
+
+        // 스플래시가 아직 표시 중이면 완료 후 표시
+        var checkAndShow = function() {
+          var splashEl = document.getElementById('splash-screen');
+          if (splashEl && splashEl.style.display !== 'none') {
+            // 아직 스플래시 중 — 0.5초마다 다시 확인
+            setTimeout(checkAndShow, 500);
+          } else {
+            // 스플래시 완료 — 0.5초 여유 후 팝업
+            setTimeout(showPopup, 500);
+          }
+        };
+        checkAndShow();
       })
       .catch(function() {});
   }
@@ -3527,64 +3542,51 @@ document.addEventListener('DOMContentLoaded', function() {
   window.history.replaceState({ screen: 's-splash', tab: 'home' }, '', '');
 });
 
-// ── 스플래시 캔버스 파티클 (🐾 부유 효과) ──
-document.addEventListener('DOMContentLoaded', function() {
-  var canvas = document.getElementById('splash-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
 
-  function resize() {
-    canvas.width  = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-  }
-  resize();
-  window.addEventListener('resize', resize);
+// ── PAWST CLASS 스플래시 애니메이션 (Award Compass 방식) ──
+(function() {
+  var splash = document.getElementById('splash-screen');
+  if (!splash) return;
 
-  // 파티클 생성
-  var particles = [];
-  var EMOJIS = ['🐾', '🐾', '🐾', '✈️', '🐶', '🐾'];
-  for (var i = 0; i < 18; i++) {
-    particles.push({
-      x:     Math.random() * canvas.width,
-      y:     Math.random() * canvas.height,
-      emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
-      size:  Math.random() * 14 + 8,
-      vx:    (Math.random() - .5) * .4,
-      vy:    -Math.random() * .5 - .2,
-      alpha: Math.random() * .35 + .1,
-      rot:   Math.random() * Math.PI * 2,
-      vrot:  (Math.random() - .5) * .01,
-    });
-  }
+  // 0.1s: SVG fade in
+  setTimeout(function() {
+    document.getElementById('splash-svg').classList.add('show');
+  }, 100);
 
-  var active = true;
-  var scEl = document.getElementById('s-splash');
+  // 0.5s: 비행기 애니메이션
+  setTimeout(function() {
+    document.getElementById('splash-plane').classList.add('animate');
+  }, 500);
 
-  function draw() {
-    if (!active) return;
-    // 스플래시 화면이 활성 상태일 때만 그리기
-    if (scEl && !scEl.classList.contains('on')) {
-      requestAnimationFrame(draw);
-      return;
-    }
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles.forEach(function(p) {
-      ctx.save();
-      ctx.globalAlpha = p.alpha;
-      ctx.font = p.size + 'px serif';
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot);
-      ctx.fillText(p.emoji, -p.size/2, p.size/2);
-      ctx.restore();
-      p.x   += p.vx;
-      p.y   += p.vy;
-      p.rot += p.vrot;
-      // 화면 밖 나가면 아래서 재진입
-      if (p.y < -20) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; }
-      if (p.x < -20) p.x = canvas.width + 20;
-      if (p.x > canvas.width + 20) p.x = -20;
-    });
-    requestAnimationFrame(draw);
-  }
-  draw();
-});
+  // 1.3s: 타이틀 등장
+  setTimeout(function() {
+    document.getElementById('splash-title').classList.add('show');
+  }, 1300);
+
+  // 1.6s: 서브타이틀 + 구분선 + 크레딧
+  setTimeout(function() {
+    document.getElementById('splash-sub').classList.add('show');
+    document.getElementById('splash-divider').classList.add('show');
+    document.getElementById('splash-credit').classList.add('show');
+  }, 1600);
+
+  // 1.9s: 로딩 dots 표시
+  setTimeout(function() {
+    document.getElementById('splash-dots').classList.add('show');
+  }, 1900);
+
+  // dots 순차 점등
+  setTimeout(function() { document.getElementById('dot1').classList.add('active'); }, 2000);
+  setTimeout(function() { document.getElementById('dot2').classList.add('active'); }, 2250);
+  setTimeout(function() { document.getElementById('dot3').classList.add('active'); }, 2500);
+
+  // 4.0s: fade out 시작
+  setTimeout(function() {
+    splash.classList.add('fade-out');
+  }, 5500);
+
+  // 6.2s: splash-screen 제거 + s-splash 본화면 표시
+  setTimeout(function() {
+    splash.style.display = 'none';
+  }, 6300);
+})();

@@ -105,175 +105,149 @@ body {
 .ni.on { color: var(--or); }
 .ni .em { font-size: 20px; line-height: 1; }
 
-/* ── SPLASH v2 — 풀스크린 다크 주황 ── */
-#s-splash {
-  background: linear-gradient(155deg, #7C2D00 0%, #C2410C 25%, #EA580C 55%, #FF8C00 80%, #FBBF24 100%);
-  position: relative;
-  overflow: hidden;
+/* ── SPLASH SCREEN (Award Compass 방식) ── */
+#splash-screen {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(160deg, #B84500 0%, #D4600A 40%, #FF8C00 75%, #FFAA33 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 1;
+  transition: opacity 0.6s ease;
+}
+#splash-screen.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+#splash-content {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-}
-
-/* 비행기 아이콘 */
-.sp-icon-wrap {
-  position: relative;
-  width: 96px; height: 96px;
-  margin: 0 auto 18px;
-  display: flex; align-items: center; justify-content: center;
-}
-.sp-ring {
-  position: absolute; border-radius: 50%;
-  border: 1.5px solid rgba(255,255,255,.25);
-  animation: sp-pulse 2.4s ease-in-out infinite;
-}
-.sp-ring1 { width: 96px; height: 96px; animation-delay: 0s; }
-.sp-ring2 { width: 72px; height: 72px; animation-delay: .4s; }
-@keyframes sp-pulse {
-  0%,100% { transform: scale(1); opacity: .5; }
-  50% { transform: scale(1.08); opacity: 1; }
-}
-.sp-plane {
-  font-size: 48px;
-  animation: sp-float 3s ease-in-out infinite;
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,.3));
-}
-@keyframes sp-float {
-  0%,100% { transform: translateY(0) rotate(-5deg); }
-  50% { transform: translateY(-6px) rotate(2deg); }
-}
-
-/* 로고 */
-.sp-logo {
-  font-size: 46px;
-  font-weight: 900;
-  color: #fff;
-  letter-spacing: .06em;
-  line-height: 1;
-  text-shadow: 0 2px 20px rgba(0,0,0,.3);
-  animation: sp-fadein .6s ease both;
-}
-.sp-logo-sub {
-  font-size: 18px;
-  font-weight: 300;
-  color: rgba(255,255,255,.7);
-  letter-spacing: .35em;
-  margin-top: 2px;
-  animation: sp-fadein .8s ease both;
-}
-.sp-tagline {
-  font-size: 12px;
-  color: rgba(255,255,255,.75);
-  letter-spacing: .06em;
-  margin-top: 10px;
-  animation: sp-fadein 1s ease both;
-}
-@keyframes sp-fadein {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* 발자국 트레일 */
-.sp-paw-trail {
-  display: flex; gap: 4px;
-  margin: 14px 0;
-  align-items: center;
-}
-.sp-paw {
-  font-size: 14px;
-  opacity: 0;
-  animation: sp-paw-walk .5s ease forwards;
-  animation-delay: calc(1.2s + var(--d));
-}
-@keyframes sp-paw-walk {
-  from { opacity: 0; transform: scale(.5) translateY(4px); }
-  to   { opacity: .85; transform: scale(1) translateY(0); }
-}
-
-/* 통계 */
-.sp-stats {
-  display: flex;
   align-items: center;
   gap: 0;
-  background: rgba(255,255,255,.12);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,.2);
-  border-radius: 16px;
-  padding: 14px 20px;
-  margin: 10px 0;
-  width: 100%;
-  max-width: 320px;
-  animation: sp-fadein 1.1s ease both;
 }
-.sp-stat { flex: 1; text-align: center; }
-.sp-stat-n { font-size: 20px; font-weight: 800; color: #fff; line-height: 1; }
-.sp-stat-l { font-size: 10px; color: rgba(255,255,255,.7); margin-top: 3px; }
-.sp-stat-div { width: 1px; height: 32px; background: rgba(255,255,255,.25); flex-shrink: 0; margin: 0 4px; }
-
-/* 파트너 */
-.sp-partners {
-  display: flex; gap: 8px;
-  margin: 10px 0 4px;
-  animation: sp-fadein 1.2s ease both;
+#splash-svg {
+  width: 190px;
+  height: 190px;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.6s ease, transform 0.6s ease;
 }
-.sp-partner {
-  background: rgba(255,255,255,.15);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,.25);
-  border-radius: 20px;
-  padding: 5px 11px;
-  font-size: 11px;
-  color: rgba(255,255,255,.9);
-  font-weight: 600;
+#splash-svg.show {
+  opacity: 1;
+  transform: scale(1);
 }
-
-/* 하단 버튼 */
-.sp-btns {
-  position: relative; z-index: 2;
-  padding: 20px 24px max(24px, env(safe-area-inset-bottom));
-  display: flex; flex-direction: column; gap: 10px;
-  background: linear-gradient(to top, rgba(124,45,0,.6) 0%, transparent 100%);
+#splash-plane {
+  transform-origin: center;
+  animation: none;
 }
-.sp-btn-main {
-  width: 100%;
-  padding: 16px;
-  background: #fff;
-  color: #EA580C;
-  border: none;
-  border-radius: 14px;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-  font-family: inherit;
-  letter-spacing: .01em;
-  box-shadow: 0 4px 20px rgba(0,0,0,.2);
-  transition: transform .15s, box-shadow .15s;
+#splash-plane.animate {
+  animation: planeFly 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
-.sp-btn-main:active { transform: scale(.97); box-shadow: 0 2px 10px rgba(0,0,0,.2); }
-.sp-btn-sec {
-  width: 100%;
-  padding: 14px;
-  background: rgba(255,255,255,.15);
-  color: #fff;
-  border: 1.5px solid rgba(255,255,255,.4);
-  border-radius: 14px;
-  font-size: 14px;
+@keyframes planeFly {
+  0%   { transform: translate(130px,130px) rotate(-30deg) scale(0.6); opacity: 0; }
+  60%  { transform: translate(130px,130px) rotate(5deg)  scale(1.05); opacity: 1; }
+  80%  { transform: translate(130px,130px) rotate(-3deg) scale(0.98); }
+  100% { transform: translate(130px,130px) rotate(0deg)  scale(1);    opacity: 1; }
+}
+#splash-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 36px;
   font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  backdrop-filter: blur(8px);
-  transition: background .15s;
+  color: #FFFFFF;
+  letter-spacing: 3px;
+  margin-top: 22px;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
 }
-.sp-btn-sec:active { background: rgba(255,255,255,.25); }
-.sp-btn-ghost {
-  background: none;
-  border: none;
-  color: rgba(255,255,255,.6);
-  font-size: 12px;
-  cursor: pointer;
-  font-family: inherit;
-  padding: 4px 8px;
+#splash-title.show {
+  opacity: 1;
+  transform: translateY(0);
 }
+#splash-sub {
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  color: rgba(255,255,255,0.85);
+  letter-spacing: 3px;
+  margin-top: 8px;
+  opacity: 0;
+  transition: opacity 0.5s ease 0.15s;
+}
+#splash-sub.show { opacity: 0.8; }
+#splash-divider {
+  width: 60px;
+  height: 1px;
+  background: rgba(255,255,255,0.6);
+  opacity: 0;
+  margin-top: 14px;
+  transition: opacity 0.4s ease 0.2s, width 0.5s ease 0.2s;
+}
+#splash-divider.show {
+  opacity: 0.6;
+  width: 110px;
+}
+#splash-credit {
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  margin-top: 10px;
+  opacity: 0;
+  transition: opacity 0.5s ease 0.25s;
+}
+#splash-credit.show { opacity: 1; }
+#splash-dots {
+  display: flex;
+  gap: 10px;
+  margin-top: 32px;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+#splash-dots.show { opacity: 1; }
+.splash-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  opacity: 0.2;
+  transition: opacity 0.3s ease;
+}
+.splash-dot.active { opacity: 1; }
+
+/* ── 본 화면 SPLASH (기존 PAWST 스타일 복원) ── */
+.splash-hero {
+  background: linear-gradient(180deg,#FFF5E6,#FFE8C0);
+  padding: 48px 24px 28px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.splash-blob {
+  position: absolute;
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  background: rgba(255,140,0,.1);
+  top: -50px; right: -50px;
+}
+.splash-emoji { font-size: 60px; margin-bottom: 10px; }
+.splash-dogs { display: flex; justify-content: center; gap: 6px; margin-bottom: 14px; }
+.dog-badge {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--orM);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.splash-logo { font-size: 26px; font-weight: 900; color: var(--tx); }
+.splash-logo .or { color: var(--or); }
+.splash-sub { font-size: 11px; color: var(--t2); margin-top: 4px; letter-spacing: .08em; }
+.splash-body { padding: 22px; flex: 1; display: flex; flex-direction: column; }
+.splash-tagline { font-size: 15px; font-weight: 700; color: var(--tx); line-height: 1.7; text-align: center; margin-bottom: 18px; }
+.stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.stat-box { background: var(--orL); border-radius: 12px; padding: 11px 5px; text-align: center; }
+.stat-n { font-size: 17px; font-weight: 800; color: var(--or); }
+.stat-l { font-size: 10px; color: var(--t2); margin-top: 2px; }
 
 .partner-row { display: flex; justify-content: center; gap: 14px; margin-bottom: 20px; }
 .partner-icon {

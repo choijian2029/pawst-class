@@ -16,62 +16,92 @@
 <div class="w" id="app">
 
 <!-- ═══ SPLASH ═══ -->
+<!-- ═══ SPLASH SCREEN (Award Compass 방식) ═══ -->
+<div id="splash-screen">
+  <div id="splash-content">
+
+    <!-- 비행기 SVG 아이콘 -->
+    <svg id="splash-svg" viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg">
+      <!-- 바깥 링 -->
+      <circle cx="130" cy="130" r="118" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2.5" opacity="0.5"/>
+      <circle cx="130" cy="130" r="124" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" opacity="0.3"/>
+      <!-- 안쪽 원 -->
+      <circle cx="130" cy="130" r="110" fill="#7A2C00"/>
+      <circle cx="130" cy="130" r="110" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
+      <!-- 눈금 선 -->
+      <g stroke="rgba(255,255,255,0.4)" stroke-width="1" opacity="0.6">
+        <line x1="130" y1="22"  x2="130" y2="40"/>
+        <line x1="130" y1="220" x2="130" y2="238"/>
+        <line x1="22"  y1="130" x2="40"  y2="130"/>
+        <line x1="220" y1="130" x2="238" y2="130"/>
+        <line x1="89"  y1="33"  x2="93"  y2="46"/>
+        <line x1="171" y1="33"  x2="167" y2="46"/>
+        <line x1="89"  y1="227" x2="93"  y2="214"/>
+        <line x1="171" y1="227" x2="167" y2="214"/>
+        <line x1="33"  y1="89"  x2="46"  y2="93"/>
+        <line x1="33"  y1="171" x2="46"  y2="167"/>
+        <line x1="227" y1="89"  x2="214" y2="93"/>
+        <line x1="227" y1="171" x2="214" y2="167"/>
+      </g>
+      <!-- 방향 라벨: ICN / ATL -->
+      <text x="130" y="54"  text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#fff">ICN</text>
+      <text x="130" y="218" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="rgba(255,255,255,0.6)">ATL</text>
+      <text x="234" y="135" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" fill="rgba(255,255,255,0.35)">E</text>
+      <text x="26"  y="135" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" fill="rgba(255,255,255,0.35)">W</text>
+      <!-- 비행기 아이콘 (중앙) -->
+      <g id="splash-plane" transform="translate(130,130)">
+        <text text-anchor="middle" dominant-baseline="central" font-size="52" y="2">✈️</text>
+      </g>
+      <!-- 중앙 점 -->
+      <circle cx="130" cy="130" r="5" fill="rgba(255,255,255,0.8)"/>
+    </svg>
+
+    <div id="splash-title">PAWST CLASS</div>
+    <div id="splash-sub">ICN → ATL &nbsp;·&nbsp; RESCUE DOG VOLUNTEER PLATFORM</div>
+    <div id="splash-divider"></div>
+    <div id="splash-credit">Built by Jian Choi &nbsp;·&nbsp; Millcreek High School &nbsp;·&nbsp; Grade 9</div>
+    <div id="splash-dots">
+      <span class="splash-dot" id="dot1"></span>
+      <span class="splash-dot" id="dot2"></span>
+      <span class="splash-dot" id="dot3"></span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ MAIN SPLASH (본 화면 — splash-screen fade-out 후 표시) ═══ -->
 <div class="sc on" id="s-splash">
-  <!-- 파티클 배경 -->
-  <canvas id="splash-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
-
   <!-- 언어 토글 -->
-  <div class="lang-toggle" id="lang-btn" onclick="togLang()" style="position:absolute;top:18px;right:18px;z-index:10;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);backdrop-filter:blur(8px);">ENG</div>
+  <div class="lang-toggle" id="lang-btn" onclick="togLang()">ENG</div>
 
-  <!-- 콘텐츠 -->
-  <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 28px 20px;text-align:center;">
-
-    <!-- 아이콘 -->
-    <div class="sp-icon-wrap">
-      <div class="sp-ring sp-ring1"></div>
-      <div class="sp-ring sp-ring2"></div>
-      <div class="sp-plane">✈️</div>
+  <div class="splash-hero">
+    <div class="splash-blob"></div>
+    <div class="splash-emoji">✈️</div>
+    <div class="splash-dogs">
+      <div class="dog-badge">🐶</div>
+      <div class="dog-badge">🐕</div>
+      <div class="dog-badge">🐩</div>
     </div>
-
-    <!-- 로고 -->
-    <div class="sp-logo">PAWST</div>
-    <div class="sp-logo-sub">CLASS</div>
-    <div class="sp-tagline" data-ko="한국 구조견 해외 입양 이동봉사 플랫폼" data-en="Korean Rescue Dog Flight Volunteer Platform">한국 구조견 해외 입양 이동봉사 플랫폼</div>
-
-    <!-- 강아지 발자국 트레일 -->
-    <div class="sp-paw-trail">
-      <span class="sp-paw" style="--d:0s">🐾</span>
-      <span class="sp-paw" style="--d:.15s">🐾</span>
-      <span class="sp-paw" style="--d:.3s">🐾</span>
-      <span class="sp-paw" style="--d:.45s">🐾</span>
-      <span class="sp-paw" style="--d:.6s">🐾</span>
-    </div>
-
-    <!-- 통계 -->
-    <div class="sp-stats">
-      <div class="sp-stat"><div class="sp-stat-n">2,847</div><div class="sp-stat-l" data-ko="이동 완료" data-en="Completed">이동 완료</div></div>
-      <div class="sp-stat-div"></div>
-      <div class="sp-stat"><div class="sp-stat-n">1,203</div><div class="sp-stat-l" data-ko="봉사자" data-en="Volunteers">봉사자</div></div>
-      <div class="sp-stat-div"></div>
-      <div class="sp-stat"><div class="sp-stat-n">3</div><div class="sp-stat-l" data-ko="협력 단체" data-en="Partners">협력 단체</div></div>
-    </div>
-
-    <!-- 파트너 뱃지 -->
-    <div class="sp-partners">
-      <div class="sp-partner">🐾 K-Pups</div>
-      <div class="sp-partner">🐕 Adopt Me</div>
-      <div class="sp-partner">🏠 감자네</div>
-    </div>
+    <div class="splash-logo">PAWST <span class="or">CLASS</span></div>
+    <div class="splash-sub" data-ko="한국 구조견 해외 입양 이동봉사 플랫폼" data-en="Korean Rescue Dog Flight Volunteer Platform">한국 구조견 해외 입양 이동봉사 플랫폼</div>
   </div>
 
-  <!-- 하단 버튼 영역 -->
-  <div class="sp-btns">
-    <button class="sp-btn-main" onclick="scGo('s-vollogin')" data-ko="✈️ 봉사자 로그인 / 시작하기" data-en="✈️ Volunteer Login / Sign Up">✈️ 봉사자 로그인 / 시작하기</button>
-    <button class="sp-btn-sec" onclick="scGo('s-orglogin');loadOrgSavedEmail();" data-ko="🏥 단체 관리자 로그인" data-en="🏥 Organization Login">🏥 단체 관리자 로그인</button>
-    <div style="display:flex;justify-content:center;gap:20px;margin-top:8px;">
-      <button class="sp-btn-ghost" onclick="scGo('s-adminlogin')">⚙️ Admin</button>
-      <button class="sp-btn-ghost" onclick="goOb()" data-ko="❓ 이동봉사란?" data-en="❓ What is this?">❓ 이동봉사란?</button>
+  <div class="splash-body">
+    <p class="splash-tagline" data-ko="한국 구조견의 미국 입양 여정에<br>당신의 좌석을 나눠주세요 🐾" data-en="Give a rescue dog your seat.<br>They'll give you their whole heart 🐾">한국 구조견의 미국 입양 여정에<br>당신의 좌석을 나눠주세요 🐾</p>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-n">2,847</div><div class="stat-l" data-ko="이동 완료" data-en="Completed">이동 완료</div></div>
+      <div class="stat-box"><div class="stat-n">1,203</div><div class="stat-l" data-ko="봉사자" data-en="Volunteers">봉사자</div></div>
+      <div class="stat-box"><div class="stat-n">3</div><div class="stat-l" data-ko="협력 단체" data-en="Partners">협력 단체</div></div>
     </div>
+    <div class="partner-row">
+      <div class="partner-wrap"><div class="partner-icon" style="background:#FFF0EB;border-color:#FFD0B5;">🐾</div><div class="partner-label">K-Pups</div></div>
+      <div class="partner-wrap"><div class="partner-icon" style="background:#EFF6FF;border-color:#BFDBFE;">🐕</div><div class="partner-label">Adopt Me</div></div>
+      <div class="partner-wrap"><div class="partner-icon" style="background:#F5F3FF;border-color:#DDD6FE;">🏠</div><div class="partner-label">감자네</div></div>
+    </div>
+    <button class="btn-pr" onclick="scGo('s-vollogin')" data-ko="✈️ 봉사자 로그인 / 시작하기" data-en="✈️ Volunteer Login / Sign Up">✈️ 봉사자 로그인 / 시작하기</button>
+    <button class="btn-sec" onclick="scGo('s-orglogin');loadOrgSavedEmail();" data-ko="🏥 단체 관리자 로그인" data-en="🏥 Organization Login">🏥 단체 관리자 로그인</button>
+    <button class="btn-ghost" onclick="scGo('s-adminlogin')" style="color:var(--t3);font-size:11px;">⚙️ Admin</button>
+    <button class="btn-ghost" onclick="goOb()" data-ko="❓ 이동봉사가 뭔가요?" data-en="❓ What is flight volunteering?">❓ 이동봉사가 뭔가요?</button>
   </div>
 </div>
 
