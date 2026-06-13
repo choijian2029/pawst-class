@@ -510,7 +510,7 @@ function loadRevWriteSection() {
   // 기관: status==done 전체 조회 후 필터
   var query = isOrg
     ? db.collection('volunteers').where('status', '==', 'done').orderBy('flightDate', 'desc')
-    : db.collection('volunteers').where('email', '==', user.email).where('status', '==', 'done');
+    : db.collection('volunteers').where('email', '==', user.email).where('status', 'in', ['done', 'matched']);
 
   query.get()
     .then(function(snap) {
@@ -774,51 +774,82 @@ function scGo(id) {
   window.history.pushState({ screen: id, tab: _curTab }, '', '');
 }
 
-// ── 갤럭시/안드로이드 백버튼 (popstate) 처리 ──
+// ── 갤럭시/안드로이드 백버튼 (popstate) 완전 재작성 ──
 window.addEventListener('popstate', function(e) {
-  // 앱 종료 확인 팝업 열려 있으면 닫기
+  // history 스택 항상 유지 (브라우저 뒤로가기 방지)
+  window.history.pushState({}, '', '');
+
+  // ① 매칭 팝업 열려 있으면 닫기
+  var matchPop = document.getElementById('match-notify-popup');
+  if (matchPop) { matchPop.remove(); return; }
+
+  // ② 앱 종료 확인 팝업 열려 있으면 닫기
   var exitPop = document.getElementById('app-exit-popup');
-  if (exitPop) { exitPop.remove(); window.history.pushState({}, '', ''); return; }
+  if (exitPop) { exitPop.remove(); return; }
 
-  // 수정 모달 열려 있으면 닫기
-  var modal = document.getElementById('edit-flight-modal');
-  if (modal) { modal.remove(); window.history.pushState({}, '', ''); return; }
+  // ③ 후기 작성 모달 열려 있으면 닫기
+  var revModal = document.getElementById('rev-modal');
+  if (revModal) { revModal.remove(); return; }
 
-  // 채팅방 열려 있으면 닫기
+  // ④ 항공편 수정 모달 열려 있으면 닫기
+  var editModal = document.getElementById('edit-flight-modal');
+  if (editModal) { editModal.remove(); return; }
+
+  // ⑤ 채팅방 열려 있으면 닫기
   var cr = document.getElementById('s-chatroom');
-  if (cr && cr.style.display !== 'none') { closeChatRoom(); window.history.pushState({}, '', ''); return; }
+  if (cr && cr.style.display !== 'none') {
+    if (typeof closeChatRoom === 'function') closeChatRoom();
+    return;
+  }
 
-  // 봉사자 프로필 열려 있으면 닫기
+  // ⑥ 봉사자 프로필 열려 있으면 닫기
   var vp = document.getElementById('s-volprofile');
-  if (vp && vp.style.display !== 'none') { closeVolProfile(); window.history.pushState({}, '', ''); return; }
+  if (vp && vp.style.display !== 'none') {
+    if (typeof closeVolProfile === 'function') closeVolProfile();
+    return;
+  }
 
-  // 서브화면(기관 대시보드, 로그인 등) → 스플래시로
+  // ⑦ 기관 대시보드 → 스플래시로
+  var orgDash = document.getElementById('s-orgdash');
+  if (orgDash && orgDash.classList.contains('on')) {
+    scGo('s-splash');
+    return;
+  }
+
+  // ⑧ 기관 로그인 화면 → 스플래시로
+  var orgLogin = document.getElementById('s-orglogin');
+  if (orgLogin && orgLogin.classList.contains('on')) {
+    scGo('s-splash');
+    return;
+  }
+
+  // ⑨ 봉사자 로그인 화면 → 스플래시로
+  var volLogin = document.getElementById('s-vollogin');
+  if (volLogin && volLogin.classList.contains('on')) {
+    scGo('s-splash');
+    return;
+  }
+
+  // ⑩ 어드민 화면 → 스플래시로
   if (_curScreen !== 's-main' && _curScreen !== 's-splash') {
     scGo('s-splash');
-    window.history.pushState({}, '', '');
     return;
   }
 
-  // 메인 탭에서 홈이 아닌 탭 → 홈으로
+  // ⑪ 메인 탭에서 홈이 아닌 탭 → 홈으로
   if (_curScreen === 's-main' && _curTab !== 'home') {
     setTab('home');
-    window.history.pushState({}, '', '');
     return;
   }
 
-  // 홈에서 백버튼 → 스플래시
+  // ⑫ 홈 탭 → 스플래시로
   if (_curScreen === 's-main' && _curTab === 'home') {
     scGo('s-splash');
-    window.history.pushState({}, '', '');
     return;
   }
 
-  // 스플래시에서 백버튼 → 앱 종료 확인 팝업
-  if (_curScreen === 's-splash') {
-    showAppExitPopup();
-    window.history.pushState({}, '', '');
-    return;
-  }
+  // ⑬ 스플래시 → 종료 확인 팝업 (항상 마지막)
+  showAppExitPopup();
 });
 
 // ── 앱 종료 확인 팝업 ──
@@ -867,6 +898,14 @@ function appExit() {
 var _origSetTabNav = setTab;
 setTab = function(t) {
   _curTab = t;
+  // 탭 전환 시 봉사자 프로필 화면 자동 닫기
+  var vp = document.getElementById('s-volprofile');
+  if (vp && vp.style.display !== 'none') {
+    vp.style.display = 'none';
+    // 탭바 복구
+    var nav = document.getElementById('main-nav');
+    if (nav) nav.style.display = '';
+  }
   _origSetTabNav(t);
   window.history.pushState({ screen: 's-main', tab: t }, '', '');
 };
@@ -1669,21 +1708,26 @@ function renderReminders() {
       if (r.dday === dd) {
         banners.push({ type:r.type, icon:r.icon, msg:isKo?r.ko:r.en, date:event.date, label:event.label });
       }
-      // 목록: 항상 전체 표시 (완료 표시 포함)
-      var absDiff = dd - r.dday; // absDiff > 0 이면 해당 D-day가 이미 지남
+      var absDiff = dd - r.dday;
       var ddLabel = r.dday === 0 ? 'D-Day'
                   : r.dday > 0  ? 'D+' + r.dday
                   : 'D' + r.dday;
-      listItems.push({
-        type:    r.type,
-        icon:    r.icon,
-        msg:     isKo ? r.ko : r.en,
-        ddLabel: ddLabel,
-        date:    event.date,
-        label:   event.label,
-        sortKey: r.dday,
-        past:    absDiff > 0   // 이미 지난 리마인더
-      });
+      // 중복 방지: 동일 항공편+D-day 조합은 한번만
+      var key = event.date + '_' + r.dday;
+      var exists = listItems.some(function(i) { return i._key === key; });
+      if (!exists) {
+        listItems.push({
+          _key:    key,
+          type:    r.type,
+          icon:    r.icon,
+          msg:     isKo ? r.ko : r.en,
+          ddLabel: ddLabel,
+          date:    event.date,
+          label:   event.label,
+          sortKey: r.dday + (new Date(event.date).getTime() / 1e10), // 날짜별로도 정렬
+          past:    absDiff > 0
+        });
+      }
     });
   });
 
@@ -1930,13 +1974,17 @@ function loadChatRooms() {
     listEl.innerHTML = snap.docs.map(function(doc) {
       var v = doc.data();
       var rid = doc.id;
-      var orgInfo = ORG_MAP[v.orgEmail] || { name: v.org || '기관', ico: '🏥', color: '#FFF5E6' };
+      var orgEmail2 = v.orgEmail || '';
+      var orgInfo = ORG_MAP[orgEmail2] || { name: v.org || (isKo?'기관':'Org'), ico: '🏥', color: '#FFF5E6' };
+      // orgEmail이 있지만 ORG_MAP에 없는 경우 이메일 앞부분을 이름으로 사용
+      var orgName2 = orgInfo.name !== (isKo?'기관':'Org') ? orgInfo.name
+                   : orgEmail2 ? orgEmail2.split('@')[0] : (v.org || (isKo?'기관':'Org'));
       return '<div class="card" style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:13px 14px;margin-bottom:8px;" onclick="openChatRoom(\'' + rid + '\')">' +
         '<div style="width:44px;height:44px;border-radius:50%;background:' + orgInfo.color + ';display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">' + orgInfo.ico + '</div>' +
         '<div style="flex:1;min-width:0;">' +
-        '<div style="font-weight:700;font-size:14px;">' + orgInfo.name + '</div>' +
+        '<div style="font-weight:700;font-size:14px;">' + orgName2 + '</div>' +
         '<div style="font-size:12px;color:var(--t2);margin-top:2px;">✈️ ' + (v.airline||'') + ' ' + (v.flightNo||'') + ' · ' + (v.flightDate||'') + '</div>' +
-        '<div style="font-size:11px;color:var(--t3);margin-top:1px;">👤 ' + (v.name||'') + '</div>' +
+        '<div style="font-size:11px;color:var(--t3);margin-top:1px;">🏥 ' + (isKo?'매칭된 기관':'Matched org') + '</div>' +
         '</div>' +
         '<div style="font-size:11px;color:var(--t3);">›</div>' +
         '</div>';
@@ -2399,14 +2447,21 @@ function doVolLogin() {
       btn.textContent = isKo ? '로그인' : 'Login';
       btn.style.opacity = '1';
       // 계정 없으면 자동 회원가입 유도
-      if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
-        showVolErr(isKo ? '계정이 없습니다. 회원가입 탭에서 가입해 주세요.' : 'No account found. Please sign up.');
+      if (e.code === 'auth/invalid-email') {
+        showVolErr(isKo ? '이메일 형식이 올바르지 않습니다. (예: name@gmail.com)' : 'Invalid email format. (e.g. name@gmail.com)');
+      } else if (e.code === 'auth/user-not-found') {
+        showVolErr(isKo ? '등록되지 않은 이메일입니다. 회원가입 탭에서 가입해 주세요.' : 'Email not found. Please sign up.');
       } else if (e.code === 'auth/wrong-password') {
-        showVolErr(isKo ? '비밀번호가 올바르지 않습니다.' : 'Incorrect password.');
-      } else if (e.code === 'auth/invalid-email') {
-        showVolErr(isKo ? '이메일 형식을 확인해 주세요.' : 'Please check your email format.');
+        showVolErr(isKo ? '비밀번호가 올바르지 않습니다. 다시 확인해 주세요.' : 'Incorrect password. Please try again.');
+      } else if (e.code === 'auth/invalid-credential') {
+        // Firebase 최신 SDK — 이메일 또는 비밀번호 오류 통합
+        showVolErr(isKo ? '이메일 또는 비밀번호가 올바르지 않습니다. 다시 확인해 주세요.' : 'Incorrect email or password. Please try again.');
+      } else if (e.code === 'auth/too-many-requests') {
+        showVolErr(isKo ? '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.' : 'Too many attempts. Please try again later.');
+      } else if (e.code === 'auth/network-request-failed') {
+        showVolErr(isKo ? '네트워크 연결을 확인해 주세요.' : 'Please check your network connection.');
       } else {
-        showVolErr(isKo ? '로그인 중 오류가 발생했습니다. 다시 시도해 주세요.' : 'Login error. Please try again.');
+        showVolErr(isKo ? '로그인 오류: ' + (e.code || '알 수 없는 오류') : 'Login error: ' + (e.code || 'unknown'));
       }
     });
 }
