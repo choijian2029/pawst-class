@@ -32,6 +32,7 @@ body {
 /* ── 화면 전환 ── */
 .sc { display: none; min-height: 100vh; flex-direction: column; }
 .sc.on { display: flex; }
+#s-ob { height: 100vh; max-height: 100vh; overflow: hidden; }
 
 /* ── 하단 탭바 ── */
 .bnav {
@@ -475,11 +476,30 @@ body {
   display: flex; align-items: center;
   border: 1.5px solid #A7F3D0;
 }
-.ob-slides { display: flex; overflow: hidden; }
-.ob-slide { min-width: 100%; padding: 48px 32px; text-align: center; }
+.ob-slides { flex: 1; width: 100%; position: relative; }
+.ob-slide { display: none; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100%; padding: 40px 32px; text-align: center; }
 .ob-emoji { font-size: 72px; margin-bottom: 24px; }
 .ob-title { font-size: 22px; font-weight: 900; margin-bottom: 12px; line-height: 1.4; }
 .ob-desc { font-size: 14px; color: var(--t2); line-height: 1.7; }
 .ob-dots { display: flex; justify-content: center; gap: 6px; padding: 16px; }
 .ob-dot { width: 6px; height: 6px; border-radius: 3px; background: var(--bd); transition: all .3s; }
 .ob-dot.on { width: 22px; background: var(--or); }
+
+/* ════════════════════════════════════
+   개인정보 동의 체크박스
+════════════════════════════════════ */
+.agree-box {
+  background: #FFF8F0;
+  border: 1.5px solid var(--orM);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.agree-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 13px; color: var(--tx); cursor: pointer; line-height: 1.5;
+}
+.agree-row input[type="checkbox"] {
+  width: 18px; height: 18px; flex-shrink: 0;
+  accent-color: var(--or); margin-top: 1px;
+}

@@ -16,8 +16,25 @@ var SUPER_ADMIN_EMAIL = 'pawstclass.1@gmail.com';
 function togLang() {
   curLang = curLang === 'ko' ? 'en' : 'ko';
   applyLang();
-  var btn = document.getElementById('lang-btn');
-  if (btn) btn.textContent = curLang === 'ko' ? 'ENG' : '한국어';
+  var label = curLang === 'ko' ? 'ENG' : '한국어';
+  ['lang-btn','lang-btn-vol'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    if (btn) btn.textContent = label;
+  });
+  // W9: 언어 전환 후 현재 탭 동적 컨텐츠 재렌더
+  if (_curScreen === 's-main') {
+    if (_curTab === 'home')     loadHome();
+    if (_curTab === 'register') loadMyFlights();
+    if (_curTab === 'dogs')     loadDogs();
+    if (_curTab === 'mypage')   loadMyPage();
+  }
+  if (_curScreen === 's-orgdash') {
+    var activeDashTab = document.querySelector('.dash-tab.on');
+    if (activeDashTab) {
+      var t = activeDashTab.id.replace('dt-','');
+      setDashTab(t);
+    }
+  }
 }
 function applyLang() {
   document.querySelectorAll('[data-ko]').forEach(function(el) {
@@ -76,11 +93,20 @@ function setDashTab(t) {
 // 온보딩
 // ══════════════════════════════════════
 var _obI = 0;
-function goOb() { _obI = 0; rOb(); scGo('s-ob'); }
+function goOb() {
+  _obI = 0;
+  scGo('s-ob');
+  rOb();
+}
 function rOb() {
-  var slides = document.getElementById('ob-slides');
-  if (slides) slides.style.transform = 'translateX(-' + (_obI * 100) + '%)';
-  document.querySelectorAll('.ob-dot').forEach(function(d, i) { d.classList.toggle('on', i === _obI); });
+  // show/hide 방식 — translateX 완전 제거
+  var slides = document.querySelectorAll('.ob-slide');
+  slides.forEach(function(s, i) {
+    s.style.display = i === _obI ? 'flex' : 'none';
+  });
+  document.querySelectorAll('.ob-dot').forEach(function(d, i) {
+    d.classList.toggle('on', i === _obI);
+  });
   var btn = document.getElementById('ob-btn');
   if (btn) {
     var isLast = _obI >= 2;
@@ -103,6 +129,35 @@ function volTab(t) {
   document.getElementById('vol-tab-login').classList.toggle('on',  t === 'login');
   document.getElementById('vol-tab-signup').classList.toggle('on', t === 'signup');
   document.getElementById('vol-err').style.display = 'none';
+}
+
+// ══════════════════════════════════════
+// 개인정보 처리방침 모달
+// ══════════════════════════════════════
+function showPrivacy() {
+  document.getElementById('privacy-modal').style.display = 'flex';
+  history.pushState({ modal: 'privacy' }, '', '');
+}
+function closePrivacy() {
+  document.getElementById('privacy-modal').style.display = 'none';
+}
+
+// ══════════════════════════════════════
+// 구글 로그인
+// ══════════════════════════════════════
+function doGoogleLogin() {
+  var isKo = curLang === 'ko';
+  var provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider)
+    .catch(function(e) {
+      var msg = isKo ? '구글 로그인에 실패했습니다.' : 'Google login failed.';
+      if (e.code === 'auth/popup-closed-by-user')
+        msg = isKo ? '로그인 창이 닫혔습니다. 다시 시도해 주세요.' : 'Popup closed. Please try again.';
+      else if (e.code === 'auth/popup-blocked')
+        msg = isKo ? '팝업이 차단되었습니다. 브라우저 설정을 확인해 주세요.' : 'Popup blocked. Check browser settings.';
+      var errEl = document.getElementById('vol-err');
+      if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+    });
 }
 
 // ══════════════════════════════════════
@@ -145,6 +200,8 @@ function doVolSignup() {
   if (!email)        { showVolErr(isKo ? '이메일을 입력해 주세요.' : 'Please enter your email.'); return; }
   if (pw.length < 6) { showVolErr(isKo ? '비밀번호는 6자 이상이어야 합니다.' : 'Password must be 6+ characters.'); return; }
   if (pw !== pw2)    { showVolErr(isKo ? '비밀번호가 일치하지 않습니다.' : 'Passwords do not match.'); return; }
+  var agreeEl = document.getElementById('agree-privacy');
+  if (agreeEl && !agreeEl.checked) { showVolErr(isKo ? '개인정보 수집·이용에 동의해 주세요.' : 'Please agree to the privacy policy.'); return; }
   auth.createUserWithEmailAndPassword(email, pw)
     .then(function() { localStorage.setItem('pawst_email', email); })
     .catch(function(e) {
@@ -265,6 +322,11 @@ function doRegister() {
     err.textContent = isKo ? '카카오톡 ID 또는 전화번호 중 하나는 입력해 주세요.' : 'Please enter KakaoTalk ID or phone number.';
     err.style.display = 'block'; return;
   }
+  var agreeFlightEl = document.getElementById('agree-flight');
+  if (agreeFlightEl && !agreeFlightEl.checked) {
+    err.textContent = isKo ? '개인정보 수집·이용에 동의해 주세요.' : 'Please agree to the privacy policy.';
+    err.style.display = 'block'; return;
+  }
 
   db.collection('volunteers').add({
     email:      user.email,
@@ -371,9 +433,12 @@ function openFlightModal(vid) {
     document.getElementById('edit-kakao').value = v.kakao || '';
     document.getElementById('edit-phone').value = v.phone || '';
     _editAirline = v.airline || '';
+    // 언어 무관하게 onclick 속성의 값으로 매칭 (data-en/ko 변경에 영향 없음)
     document.querySelectorAll('#edit-airline-chips .chip').forEach(function(c) {
-      var label = c.textContent.split(' ')[0];
-      c.classList.toggle('on', label === _editAirline);
+      var onclick = c.getAttribute('onclick') || '';
+      var match = onclick.match(/selEditAirline\(this,'([^']+)'\)/);
+      var chipVal = match ? match[1] : '';
+      c.classList.toggle('on', chipVal === _editAirline);
     });
     document.getElementById('flight-modal').style.display = 'flex';
     history.pushState({ modal: 'flight' }, '', '');
@@ -388,6 +453,9 @@ function saveEditFlight() {
   var date  = document.getElementById('edit-date').value;
   var kakao = (document.getElementById('edit-kakao').value || '').trim();
   var phone = (document.getElementById('edit-phone').value || '').trim();
+  if (!_editAirline) {
+    alert(isKo ? '항공사를 선택해 주세요.' : 'Please select an airline.'); return;
+  }
   if (date && date < new Date().toISOString().slice(0,10)) {
     alert(isKo ? '출발 날짜는 오늘 이후여야 합니다.' : 'Date must be today or later.'); return;
   }
@@ -453,7 +521,7 @@ function loadHomeDogPreview() {
       }
       el.innerHTML = snap.docs.map(function(doc) {
         var d = doc.data();
-        var org = ORG_MAP[d.orgEmail] || { ico:'🏥', name:'기관' };
+        var org = getOrgInfo(d.orgEmail) || { ico:'🏥', name:'기관', color:'#FFF5E6' };
         return '<div class="dog-card">' +
           '<div class="dog-emoji">🐶</div>' +
           '<div class="dog-info">' +
@@ -524,7 +592,7 @@ function loadDogs() {
       }
       el.innerHTML = docs.map(function(doc) {
         var d = doc.data();
-        var org = ORG_MAP[d.orgEmail] || { ico:'🏥', name: d.orgEmail||'기관', color:'#FFF5E6' };
+        var org = getOrgInfo(d.orgEmail) || { ico:'🏥', name: d.orgEmail||'기관', color:'#FFF5E6' };
         return '<div class="dog-card">' +
           '<div class="dog-emoji">🐶</div>' +
           '<div class="dog-info">' +
@@ -547,7 +615,7 @@ function loadDogs() {
         }
         el.innerHTML = docs.map(function(doc) {
           var d = doc.data();
-          var org = ORG_MAP[d.orgEmail] || { ico:'🏥', name:'기관' };
+          var org = getOrgInfo(d.orgEmail) || { ico:'🏥', name:'기관', color:'#FFF5E6' };
           return '<div class="dog-card"><div class="dog-emoji">🐶</div><div class="dog-info"><div class="dog-name">' + (d.name||'') + '</div><div class="dog-detail">' + org.ico + ' ' + org.name + ' · ⚖️ ' + (d.weight||'?') + 'kg · 📅 ' + (d.period||'') + '</div></div></div>';
         }).join('');
       });
@@ -637,6 +705,7 @@ function loadMyPage() {
           '<div class="flight-detail">' +
             '🛫 ' + (v.airline||'') + ' · 📅 ' + dateStr +
             (v.kakao ? '<br>💬 ' + v.kakao : '') +
+            (v.phone ? (v.kakao?' · ':'<br>') + '📞 ' + v.phone : '') +
           '</div>' +
         '</div>';
       }).join('');
@@ -711,11 +780,13 @@ function saveDog() {
 
   if (!name) { errEl.textContent = isKo ? '이름을 입력해 주세요.' : 'Please enter name.'; errEl.style.display = 'block'; return; }
 
-  var data = { name, breed, weight, period, note, orgEmail: user.email, status: 'waiting' };
+  // 신규 등록은 status:'waiting' 포함, 수정은 status 제외 (기존 status 유지)
+  var newData  = { name: name, breed: breed, weight: weight, period: period, note: note, orgEmail: user.email };
+  var editData = { name: name, breed: breed, weight: weight, period: period, note: note };
 
   var p = did
-    ? db.collection('dogs').doc(did).update(data)
-    : db.collection('dogs').add(Object.assign(data, { createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
+    ? db.collection('dogs').doc(did).update(editData)
+    : db.collection('dogs').add(Object.assign(newData, { status: 'waiting', createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
 
   p.then(function() {
     closeDogModal();
@@ -776,9 +847,11 @@ function loadDashVols() {
   var el = document.getElementById('dash-vols-list');
   if (!el) return;
   var isKo = curLang === 'ko';
+  var orgEmail = auth.currentUser ? auth.currentUser.email : '';
   el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--t3);">' + (isKo?'불러오는 중...':'Loading...') + '</div>';
 
-  // 대기중(pending) + 연락완료(matched) 봉사자 모두 표시
+  // 봉사자 탭: pending/matched 전체 목록 (날짜순)
+  // 기관이 연락완료 표시하면 matchedOrgEmail로 본인 기관 기록
   db.collection('volunteers').where('status','in',['pending','matched']).orderBy('flightDate','asc').get()
     .then(function(snap) {
       if (snap.empty) {
@@ -798,7 +871,7 @@ function loadDashVols() {
           '</div>' +
           '<div style="font-size:13px;color:var(--t2);margin-top:6px;">📅 ' + (v.flightDate||'') + ' · ICN → ATL</div>' +
           '<div style="font-size:13px;margin-top:6px;color:var(--tx);">' +
-          (kakaoId ? '💬 ' + kakaoId : '') + (kakaoId && phone ? ' · ' : '') + (phone ? '📞 ' + phone : '') +
+          (kakaoId ? '💬 ' + kakaoId : '') + (kakaoId && phone ? ' · ' : '') + (phone ? '📞 ' + phone : '') + ((!kakaoId && !phone) ? '<span style="color:var(--t3);font-size:12px;">' + (isKo?'연락처 없음':'No contact info') + '</span>' : '') +
           '</div>' +
           '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">' +
           (kakaoId ? '<button class="kakao-btn" style="flex:1;padding:10px;" onclick="copyKakao(\'' + kakaoId + '\')">💬 ' + (isKo?'카카오톡 ID 복사':'Copy KakaoTalk ID') + '</button>' : '') +
@@ -846,8 +919,18 @@ function loadDashVols() {
 
 function markContacted(vid, isAlreadyContacted) {
   var isKo = curLang === 'ko';
+  var user = auth.currentUser;
+  if (!user) return;
   var newStatus = isAlreadyContacted ? 'pending' : 'matched';
-  db.collection('volunteers').doc(vid).update({ status: newStatus })
+  var updateData = { status: newStatus };
+  if (!isAlreadyContacted) {
+    // 연락완료 시 어느 기관이 연락했는지 기록
+    updateData.matchedOrgEmail = user.email;
+  } else {
+    // 연락완료 취소 시 기관 기록 제거
+    updateData.matchedOrgEmail = '';
+  }
+  db.collection('volunteers').doc(vid).update(updateData)
     .then(function() { loadDashVols(); })
     .catch(function(e) { alert('오류: ' + e.message); });
 }
@@ -859,23 +942,40 @@ function loadDashDone() {
   var el = document.getElementById('dash-done-list');
   if (!el) return;
   var isKo = curLang === 'ko';
+  var user = auth.currentUser;
+  if (!user) return;
+  var myOrgEmail = user.email;
   el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--t3);">' + (isKo?'불러오는 중...':'Loading...') + '</div>';
 
+  // 완료 탭: 본인 기관이 matchedOrgEmail로 기록된 건만 표시
+  // (matchedOrgEmail 없는 구버전 데이터는 전체 표시)
   db.collection('volunteers').where('status','==','done').get()
     .then(function(snap) {
       if (snap.empty) {
         el.innerHTML = '<div class="empty-state"><div class="em">✅</div><div class="msg">' + (isKo?'완료된 봉사가 없습니다.':'No completed transports yet.') + '</div></div>';
         return;
       }
-      // 완료 건수 상단 표시
+      // 본인 기관이 연락완료한 건 + 구버전(matchedOrgEmail 없는) 건 표시
+      var filteredDocs = snap.docs.filter(function(doc) {
+        var v = doc.data();
+        return !v.matchedOrgEmail || v.matchedOrgEmail === myOrgEmail;
+      });
+
+      if (!filteredDocs.length) {
+        el.innerHTML = '<div class="empty-state"><div class="em">✅</div><div class="msg">' + (isKo?'완료된 봉사가 없습니다.':'No completed transports yet.') + '</div></div>';
+        return;
+      }
+
       var countHtml = '<div class="done-count-banner">' +
-        '<span style="font-size:28px;font-weight:900;color:var(--gr);">' + snap.size + '</span>' +
+        '<span style="font-size:28px;font-weight:900;color:var(--gr);">' + filteredDocs.length + '</span>' +
         '<span style="font-size:13px;color:var(--t2);margin-left:8px;">' + (isKo?'건 이동완료':'transports completed') + '</span>' +
         '</div>';
 
-      var listHtml = snap.docs.map(function(doc) {
+      var listHtml = filteredDocs.map(function(doc) {
         var v = doc.data(); var vid = doc.id;
-        var doneDate = v.doneAt ? new Date(v.doneAt.toDate()).toLocaleDateString('ko-KR') : '';
+        var doneDate = '';
+        try { doneDate = v.doneAt ? new Date(v.doneAt.toDate()).toLocaleDateString('ko-KR') : ''; }
+        catch(e) { doneDate = ''; }
         return '<div class="card">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;">' +
             '<div style="font-weight:800;">✈️ ' + (v.airline||'') + '</div>' +
@@ -953,12 +1053,7 @@ function loadAdminDash() {
     var pending = vols.docs.filter(function(d) { return d.data().status === 'pending'; }).length;
     var waiting = dogs.docs.filter(function(d) { return d.data().status === 'waiting'; }).length;
 
-    // 핵심 통계
-    document.getElementById('admin-stats').innerHTML =
-      '<div class="admin-stat-box"><div class="admin-stat-n">' + vols.size + '</div><div class="admin-stat-l">전체 봉사 신청</div></div>' +
-      '<div class="admin-stat-box"><div class="admin-stat-n" style="color:var(--gr);">' + done + '</div><div class="admin-stat-l">✅ 이동완료</div></div>' +
-      '<div class="admin-stat-box"><div class="admin-stat-n" style="color:var(--or);">' + matched + '</div><div class="admin-stat-l">📱 연락완료</div></div>' +
-      '<div class="admin-stat-box"><div class="admin-stat-n">' + pending + '</div><div class="admin-stat-l">⏳ 대기중</div></div>';
+    // 통계는 아래 statsHtml에서 한번에 처리
 
     // 기관별 완료 통계
     var orgDone = {};
@@ -1061,7 +1156,7 @@ function loadAdminDash() {
     var dogListHtml = '<div class="sec-hd" style="margin-top:20px;">강아지 목록 (최대 30건)</div>';
     dogListHtml += dogs.docs.slice(0,30).map(function(doc) {
       var d = doc.data();
-      var org = ORG_MAP[d.orgEmail] || { name: d.orgEmail||'기관', ico:'🏥' };
+      var org = getOrgInfo(d.orgEmail) || { name: d.orgEmail||'기관', ico:'🏥' };
       return '<div class="card" style="margin-bottom:8px;">' +
         '<div style="display:flex;justify-content:space-between;">' +
           '<b>🐶 ' + (d.name||'') + '</b>' +
@@ -1071,18 +1166,18 @@ function loadAdminDash() {
       '</div>';
     }).join('');
 
-    // 전체 삽입
-    var container = document.querySelector('#s-admindash > div:last-child');
-    if (container) {
-      container.innerHTML =
-        '<div class="admin-stat-row" id="admin-stats"></div>' +
-        orgHtml + monthHtml + airlineHtml + volListHtml + dogListHtml;
-      // 통계 다시 삽입 (innerHTML 덮어써서)
-      document.getElementById('admin-stats').innerHTML =
-        '<div class="admin-stat-box"><div class="admin-stat-n">' + vols.size + '</div><div class="admin-stat-l">전체 봉사 신청</div></div>' +
-        '<div class="admin-stat-box"><div class="admin-stat-n" style="color:var(--gr);">' + done + '</div><div class="admin-stat-l">✅ 이동완료</div></div>' +
-        '<div class="admin-stat-box"><div class="admin-stat-n" style="color:var(--or);">' + matched + '</div><div class="admin-stat-l">📱 연락완료</div></div>' +
-        '<div class="admin-stat-box"><div class="admin-stat-n">' + pending + '</div><div class="admin-stat-l">⏳ 대기중</div></div>';
+    // 통계 HTML 먼저 구성 후 한번에 삽입
+    var statsHtml = '<div class="admin-stat-row" id="admin-stats">' +
+      '<div class="admin-stat-box"><div class="admin-stat-n">' + vols.size + '</div><div class="admin-stat-l">전체 봉사 신청</div></div>' +
+      '<div class="admin-stat-box"><div class="admin-stat-n" style="color:var(--gr);">' + done + '</div><div class="admin-stat-l">✅ 이동완료</div></div>' +
+      '<div class="admin-stat-box"><div class="admin-stat-n" style="color:var(--or);">' + matched + '</div><div class="admin-stat-l">📱 연락완료</div></div>' +
+      '<div class="admin-stat-box"><div class="admin-stat-n">' + pending + '</div><div class="admin-stat-l">⏳ 대기중</div></div>' +
+      '</div>';
+
+    // id 기반으로 안전하게 삽입 (querySelector DOM 의존 제거)
+    var adminBody = document.getElementById('admin-dash-body');
+    if (adminBody) {
+      adminBody.innerHTML = statsHtml + orgHtml + monthHtml + airlineHtml + volListHtml + dogListHtml;
     }
   });
 }
@@ -1136,6 +1231,9 @@ window.addEventListener('popstate', function() {
 
   // ① 종료 팝업
   if (document.getElementById('app-exit-popup')) { closeExitPopup(); return; }
+
+  // ① 개인정보 모달
+  if (document.getElementById('privacy-modal') && document.getElementById('privacy-modal').style.display !== 'none') { closePrivacy(); return; }
 
   // ② 강아지 등록 모달
   if (document.getElementById('dog-modal').style.display !== 'none') { closeDogModal(); return; }

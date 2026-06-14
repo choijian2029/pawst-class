@@ -71,7 +71,7 @@
 
 <!-- ══ 온보딩 ══ -->
 <div class="sc" id="s-ob">
-  <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+  <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
     <div class="ob-slides" id="ob-slides">
       <div class="ob-slide">
         <div class="ob-emoji">🐾</div>
@@ -103,6 +103,7 @@
 
 <!-- ══ 봉사자 로그인 ══ -->
 <div class="sc" id="s-vollogin">
+  <div class="lang-toggle" id="lang-btn-vol" onclick="togLang()">ENG</div>
   <div class="login-hero">
     <div class="login-emoji">✈️</div>
     <div class="login-title" data-ko="봉사자 로그인" data-en="Volunteer Login">봉사자 로그인</div>
@@ -110,6 +111,20 @@
   </div>
   <div class="login-body">
     <div id="vol-err" class="err-msg"></div>
+    <button class="btn-google" onclick="doGoogleLogin()">
+      <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+        <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+      <span data-ko="Google로 계속하기" data-en="Continue with Google">Google로 계속하기</span>
+    </button>
+    <div class="divider-row">
+      <div class="divider-line"></div>
+      <span class="divider-txt" data-ko="또는 이메일로" data-en="or with email">또는 이메일로</span>
+      <div class="divider-line"></div>
+    </div>
     <div class="login-tab-row">
       <button class="login-tab on" id="vol-tab-login" onclick="volTab('login')" data-ko="로그인" data-en="Login">로그인</button>
       <button class="login-tab" id="vol-tab-signup" onclick="volTab('signup')" data-ko="회원가입" data-en="Sign Up">회원가입</button>
@@ -136,6 +151,12 @@
       <input class="fi" id="vol-pw2" type="password" placeholder="••••••••">
       <label class="fi-label" data-ko="비밀번호 확인" data-en="Confirm Password">비밀번호 확인</label>
       <input class="fi" id="vol-pw3" type="password" placeholder="••••••••">
+      <div class="agree-box">
+        <label class="agree-row">
+          <input type="checkbox" id="agree-privacy">
+          <span data-ko='개인정보 수집·이용에 동의합니다 <a href="#" onclick="showPrivacy();return false;" style="color:var(--or);">[내용 보기]</a>' data-en='I agree to the collection and use of personal information <a href="#" onclick="showPrivacy();return false;" style="color:var(--or);">[View]</a>'>개인정보 수집·이용에 동의합니다 <a href="#" onclick="showPrivacy();return false;" style="color:var(--or);">[내용 보기]</a></span>
+        </label>
+      </div>
       <button class="btn-pr" onclick="doVolSignup()" data-ko="가입하기" data-en="Sign Up">가입하기</button>
     </div>
     <button class="btn-sec" onclick="scGo('s-splash')" data-ko="← 돌아가기" data-en="← Back">← 돌아가기</button>
@@ -195,15 +216,23 @@
       <div id="reg-err" class="err-msg"></div>
       <label class="fi-label" data-ko="항공사" data-en="Airline">항공사</label>
       <div class="chip-row" id="reg-airline-chips">
-        <button class="chip" onclick="selAirline(this,'대한항공')">대한항공 KE</button>
-        <button class="chip" onclick="selAirline(this,'아시아나')">아시아나 OZ</button>
-        <button class="chip" onclick="selAirline(this,'에어프레미아')">에어프레미아 RS</button>
+        <button class="chip" onclick="selAirline(this,'대한항공')" data-ko="대한항공 KE" data-en="Korean Air KE">대한항공 KE</button>
+        <button class="chip" onclick="selAirline(this,'아시아나')" data-ko="아시아나 OZ" data-en="Asiana OZ">아시아나 OZ</button>
+        <button class="chip" onclick="selAirline(this,'에어프레미아')" data-ko="에어프레미아 RS" data-en="Air Premia RS">에어프레미아 RS</button>
       </div>
       <label class="fi-label" data-ko="출발 날짜" data-en="Departure Date">출발 날짜</label>
       <input class="fi" id="reg-date" type="date">
       <label class="fi-label" data-ko="카카오톡 ID" data-en="KakaoTalk ID">카카오톡 ID</label>
       <input class="fi" id="reg-kakao" placeholder="예: jiancat" autocomplete="off">
-      <p class="fi-hint" data-ko="※ 기관이 카카오톡으로 직접 연락드립니다" data-en="※ Organizations will contact you via KakaoTalk">※ 기관이 카카오톡으로 직접 연락드립니다</p>
+      <label class="fi-label" data-ko="전화번호 (선택)" data-en="Phone Number (optional)">전화번호 (선택)</label>
+      <input class="fi" id="reg-phone" type="tel" placeholder="예: 010-1234-5678">
+      <p class="fi-hint" data-ko="※ 카카오톡 ID 또는 전화번호 중 하나는 필수입니다" data-en="※ KakaoTalk ID or phone number required">※ 카카오톡 ID 또는 전화번호 중 하나는 필수입니다</p>
+      <div class="agree-box">
+        <label class="agree-row">
+          <input type="checkbox" id="agree-flight">
+          <span data-ko='카카오톡 ID·전화번호 수집에 동의합니다 <a href="#" onclick="showPrivacy();return false;" style="color:var(--or);">[내용 보기]</a>' data-en='I agree to collection of KakaoTalk ID and phone number <a href="#" onclick="showPrivacy();return false;" style="color:var(--or);">[View]</a>'>카카오톡 ID·전화번호 수집에 동의합니다 <a href="#" onclick="showPrivacy();return false;" style="color:var(--or);">[내용 보기]</a></span>
+        </label>
+      </div>
       <button class="btn-pr" onclick="doRegister()" data-ko="✈️ 봉사 신청하기" data-en="✈️ Register">✈️ 봉사 신청하기</button>
       <button class="btn-ghost" onclick="loadMyFlights()" style="width:100%;text-align:center;display:none;" id="reg-cancel-btn" data-ko="취소" data-en="Cancel">취소</button>
     </div>
@@ -218,7 +247,7 @@
       <button class="chip on" onclick="filterDogs(this,'all')" data-ko="전체" data-en="All">전체</button>
       <button class="chip" onclick="filterDogs(this,'kpups@pc.com')">K-Pups 🐾</button>
       <button class="chip" onclick="filterDogs(this,'adoptme@pc.com')">Adopt Me 🐕</button>
-      <button class="chip" onclick="filterDogs(this,'gamjane@pc.com')">감자네 🏠</button>
+      <button class="chip" onclick="filterDogs(this,'gamjane@pc.com')" data-ko="감자네 🏠" data-en="Gamjane 🏠">감자네 🏠</button>
     </div>
     <div id="dogs-list"></div>
   </div>
@@ -315,12 +344,36 @@
     <div class="top-hd-title">⚙️ Admin Dashboard</div>
     <button class="btn-sm btn-sm-or" onclick="doAdminLogout()">로그아웃</button>
   </div>
-  <div style="flex:1;overflow-y:auto;padding:16px 16px 30px;">
+  <div id="admin-dash-body" style="flex:1;overflow-y:auto;padding:16px 16px 30px;">
     <div class="admin-stat-row" id="admin-stats"></div>
-    <div class="sec-hd" style="margin-top:8px;">봉사자 목록</div>
-    <div id="admin-vols-list"></div>
-    <div class="sec-hd" style="margin-top:20px;">강아지 목록</div>
-    <div id="admin-dogs-list"></div>
+  </div>
+</div>
+
+
+<!-- ══ 개인정보 처리방침 모달 ══ -->
+<div id="privacy-modal" style="display:none;" class="modal-overlay" onclick="if(event.target===this)closePrivacy()">
+  <div class="modal-sheet" style="max-height:80vh;">
+    <div class="modal-handle"></div>
+    <div class="modal-title" data-ko="개인정보 수집·이용 동의" data-en="Privacy Policy">개인정보 수집·이용 동의</div>
+    <div style="font-size:13px;color:var(--t2);line-height:1.8;overflow-y:auto;max-height:50vh;">
+      <b data-ko="수집 항목" data-en="Information Collected">수집 항목</b><br>
+      <span data-ko="이메일, 카카오톡 ID, 전화번호" data-en="Email, KakaoTalk ID, Phone Number">이메일, 카카오톡 ID, 전화번호</span>
+      <br><br>
+      <b data-ko="수집 목적" data-en="Purpose">수집 목적</b><br>
+      <span data-ko="한국 구조견 이동봉사 매칭 서비스 제공, 파트너 기관과의 연결" data-en="Providing rescue dog transport volunteer matching service and connecting with partner organizations">한국 구조견 이동봉사 매칭 서비스 제공, 파트너 기관과의 연결</span>
+      <br><br>
+      <b data-ko="보유 기간" data-en="Retention Period">보유 기간</b><br>
+      <span data-ko="봉사 완료 후 1년, 또는 회원 탈퇴 시 즉시 삭제" data-en="1 year after transport completion, or immediately upon account deletion">봉사 완료 후 1년, 또는 회원 탈퇴 시 즉시 삭제</span>
+      <br><br>
+      <b data-ko="제3자 제공" data-en="Third Party Sharing">제3자 제공</b><br>
+      <span data-ko="파트너 기관(K-Pups for Love, Adopt Me Korea, 감자네 하우스)에 이동봉사 매칭 목적으로만 제공됩니다." data-en="Shared only with partner organizations (K-Pups for Love, Adopt Me Korea, Gamjane House) for transport matching purposes.">파트너 기관(K-Pups for Love, Adopt Me Korea, 감자네 하우스)에 이동봉사 매칭 목적으로만 제공됩니다.</span>
+      <br><br>
+      <b data-ko="동의 거부 권리" data-en="Right to Refuse">동의 거부 권리</b><br>
+      <span data-ko="동의를 거부할 수 있으나, 거부 시 서비스 이용이 제한될 수 있습니다." data-en="You may refuse consent, but service use may be restricted.">동의를 거부할 수 있으나, 거부 시 서비스 이용이 제한될 수 있습니다.</span>
+      <br><br>
+      <span style="font-size:11px;color:var(--t3);" data-ko="문의: pawstclass.1@gmail.com" data-en="Contact: pawstclass.1@gmail.com">문의: pawstclass.1@gmail.com</span>
+    </div>
+    <button class="btn-pr" style="margin-top:16px;" onclick="closePrivacy()" data-ko="확인" data-en="Close">확인</button>
   </div>
 </div>
 
@@ -354,14 +407,16 @@
     <input type="hidden" id="flight-edit-id">
     <label class="fi-label" data-ko="항공사" data-en="Airline">항공사</label>
     <div class="chip-row" id="edit-airline-chips">
-      <button class="chip" onclick="selEditAirline(this,'대한항공')">대한항공 KE</button>
-      <button class="chip" onclick="selEditAirline(this,'아시아나')">아시아나 OZ</button>
-      <button class="chip" onclick="selEditAirline(this,'에어프레미아')">에어프레미아 RS</button>
+      <button class="chip" onclick="selEditAirline(this,'대한항공')" data-ko="대한항공 KE" data-en="Korean Air KE">대한항공 KE</button>
+      <button class="chip" onclick="selEditAirline(this,'아시아나')" data-ko="아시아나 OZ" data-en="Asiana OZ">아시아나 OZ</button>
+      <button class="chip" onclick="selEditAirline(this,'에어프레미아')" data-ko="에어프레미아 RS" data-en="Air Premia RS">에어프레미아 RS</button>
     </div>
     <label class="fi-label" data-ko="출발 날짜" data-en="Departure Date">출발 날짜</label>
     <input class="fi" id="edit-date" type="date">
     <label class="fi-label" data-ko="카카오톡 ID" data-en="KakaoTalk ID">카카오톡 ID</label>
     <input class="fi" id="edit-kakao" placeholder="예: jiancat">
+    <label class="fi-label" data-ko="전화번호 (선택)" data-en="Phone Number (optional)">전화번호 (선택)</label>
+    <input class="fi" id="edit-phone" type="tel" placeholder="예: 010-1234-5678">
     <button class="btn-pr" onclick="saveEditFlight()" data-ko="저장" data-en="Save">저장</button>
     <button class="btn-sec" onclick="closeFlightModal()" data-ko="취소" data-en="Cancel">취소</button>
   </div>
