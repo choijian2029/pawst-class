@@ -16,8 +16,11 @@ var SUPER_ADMIN_EMAIL = 'pawstclass.1@gmail.com';
 function togLang() {
   curLang = curLang === 'ko' ? 'en' : 'ko';
   applyLang();
-  var btn = document.getElementById('lang-btn');
-  if (btn) btn.textContent = curLang === 'ko' ? 'ENG' : '한국어';
+  var label = curLang === 'ko' ? 'ENG' : '한국어';
+  ['lang-btn','lang-btn-vol'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    if (btn) btn.textContent = label;
+  });
 }
 function applyLang() {
   document.querySelectorAll('[data-ko]').forEach(function(el) {
@@ -106,8 +109,24 @@ function volTab(t) {
 }
 
 // ══════════════════════════════════════
-// 봉사자 로그인 / 회원가입
+// 구글 로그인
 // ══════════════════════════════════════
+function doGoogleLogin() {
+  var isKo = curLang === 'ko';
+  var provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider)
+    .catch(function(e) {
+      var msg = isKo ? '구글 로그인에 실패했습니다.' : 'Google login failed.';
+      if (e.code === 'auth/popup-closed-by-user')
+        msg = isKo ? '로그인 창이 닫혔습니다. 다시 시도해 주세요.' : 'Login popup closed. Please try again.';
+      else if (e.code === 'auth/popup-blocked')
+        msg = isKo ? '팝업이 차단되었습니다. 브라우저 설정을 확인해 주세요.' : 'Popup blocked. Please check browser settings.';
+      var errEl = document.getElementById('vol-err');
+      if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+    });
+}
+
+// 봉사자 로그인
 function showVolErr(msg) {
   var el = document.getElementById('vol-err');
   el.textContent = msg; el.style.display = 'block';
