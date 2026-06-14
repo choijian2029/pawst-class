@@ -19,12 +19,12 @@ var auth = firebase.auth();
 // ── 기관 계정 목록 (어드민 지안이가 직접 관리) ──
 // 실제 기관 이메일/비밀번호는 Firebase Console > Authentication > Users 에서 직접 추가
 // 현재 등록된 기관:
-//   kpups@pawst-class.com        / kpups2026!
-//   adoptme@pawst-class.com      / adoptme2026!
-//   gamjane@pawst-class.com      / gamjane2026!
+//   kpups@pc.com     / kpups!
+//   adoptme@pc.com   / adoptme!
+//   gamjane@pc.com   / gamjane!
 
 var ORG_MAP = {
-  "kpups@pawst-class.com":   { name: "K-Pups for Love",  ico: "🐾", color: "#FFF0EB" },
-  "adoptme@pawst-class.com": { name: "Adopt Me Korea",   ico: "🐕", color: "#EFF6FF" },
-  "gamjane@pawst-class.com": { name: "감자네 하우스",      ico: "🏠", color: "#F5F3FF" }
+  "kpups@pc.com":   { name: "K-Pups for Love",  ico: "🐾", color: "#FFF0EB" },
+  "adoptme@pc.com": { name: "Adopt Me Korea",   ico: "🐕", color: "#EFF6FF" },
+  "gamjane@pc.com": { name: "감자네 하우스",      ico: "🏠", color: "#F5F3FF" }
 };

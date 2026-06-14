@@ -103,7 +103,6 @@
 
 <!-- ══ 봉사자 로그인 ══ -->
 <div class="sc" id="s-vollogin">
-  <div class="lang-toggle" id="lang-btn-vol" onclick="togLang()">ENG</div>
   <div class="login-hero">
     <div class="login-emoji">✈️</div>
     <div class="login-title" data-ko="봉사자 로그인" data-en="Volunteer Login">봉사자 로그인</div>
@@ -111,24 +110,6 @@
   </div>
   <div class="login-body">
     <div id="vol-err" class="err-msg"></div>
-
-    <!-- 구글 로그인 -->
-    <button class="btn-google" onclick="doGoogleLogin()">
-      <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
-        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-        <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
-        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
-      </svg>
-      <span data-ko="Google로 계속하기" data-en="Continue with Google">Google로 계속하기</span>
-    </button>
-
-    <div class="divider-row">
-      <div class="divider-line"></div>
-      <span class="divider-txt" data-ko="또는 이메일로" data-en="or with email">또는 이메일로</span>
-      <div class="divider-line"></div>
-    </div>
-
     <div class="login-tab-row">
       <button class="login-tab on" id="vol-tab-login" onclick="volTab('login')" data-ko="로그인" data-en="Login">로그인</button>
       <button class="login-tab" id="vol-tab-signup" onclick="volTab('signup')" data-ko="회원가입" data-en="Sign Up">회원가입</button>
@@ -235,9 +216,9 @@
     <!-- 기관 필터 -->
     <div class="chip-row" id="dogs-filter">
       <button class="chip on" onclick="filterDogs(this,'all')" data-ko="전체" data-en="All">전체</button>
-      <button class="chip" onclick="filterDogs(this,'kpups@pawst-class.com')">K-Pups 🐾</button>
-      <button class="chip" onclick="filterDogs(this,'adoptme@pawst-class.com')">Adopt Me 🐕</button>
-      <button class="chip" onclick="filterDogs(this,'gamjane@pawst-class.com')">감자네 🏠</button>
+      <button class="chip" onclick="filterDogs(this,'kpups@pc.com')">K-Pups 🐾</button>
+      <button class="chip" onclick="filterDogs(this,'adoptme@pc.com')">Adopt Me 🐕</button>
+      <button class="chip" onclick="filterDogs(this,'gamjane@pc.com')">감자네 🏠</button>
     </div>
     <div id="dogs-list"></div>
   </div>
@@ -275,7 +256,7 @@
   <div class="login-body">
     <div id="org-err" class="err-msg"></div>
     <label class="fi-label" data-ko="이메일" data-en="Email">이메일</label>
-    <input class="fi" id="org-email" type="email" placeholder="org@pawst-class.com">
+    <input class="fi" id="org-email" type="email" placeholder="org@pc.com">
     <label class="fi-label" data-ko="비밀번호" data-en="Password">비밀번호</label>
     <input class="fi" id="org-pw" type="password" placeholder="••••••••">
     <button class="btn-pr" onclick="doOrgLogin()" data-ko="로그인" data-en="Login">로그인</button>

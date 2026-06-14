@@ -16,11 +16,8 @@ var SUPER_ADMIN_EMAIL = 'pawstclass.1@gmail.com';
 function togLang() {
   curLang = curLang === 'ko' ? 'en' : 'ko';
   applyLang();
-  var label = curLang === 'ko' ? 'ENG' : '한국어';
-  ['lang-btn','lang-btn-vol'].forEach(function(id) {
-    var btn = document.getElementById(id);
-    if (btn) btn.textContent = label;
-  });
+  var btn = document.getElementById('lang-btn');
+  if (btn) btn.textContent = curLang === 'ko' ? 'ENG' : '한국어';
 }
 function applyLang() {
   document.querySelectorAll('[data-ko]').forEach(function(el) {
@@ -109,24 +106,8 @@ function volTab(t) {
 }
 
 // ══════════════════════════════════════
-// 구글 로그인
+// 봉사자 로그인 / 회원가입
 // ══════════════════════════════════════
-function doGoogleLogin() {
-  var isKo = curLang === 'ko';
-  var provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider)
-    .catch(function(e) {
-      var msg = isKo ? '구글 로그인에 실패했습니다.' : 'Google login failed.';
-      if (e.code === 'auth/popup-closed-by-user')
-        msg = isKo ? '로그인 창이 닫혔습니다. 다시 시도해 주세요.' : 'Login popup closed. Please try again.';
-      else if (e.code === 'auth/popup-blocked')
-        msg = isKo ? '팝업이 차단되었습니다. 브라우저 설정을 확인해 주세요.' : 'Popup blocked. Please check browser settings.';
-      var errEl = document.getElementById('vol-err');
-      if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
-    });
-}
-
-// 봉사자 로그인
 function showVolErr(msg) {
   var el = document.getElementById('vol-err');
   el.textContent = msg; el.style.display = 'block';
@@ -437,16 +418,27 @@ function loadHome() {
   }
 }
 
+var ORG_LINKS = {
+  'kpups@pc.com':   'https://www.kpupsforlove.org/',
+  'adoptme@pc.com': 'https://adoptmekr.org/',
+  'gamjane@pc.com': 'https://www.instagram.com/gamjane_supportlist/'
+};
+
 function loadOrgCards() {
   var el = document.getElementById('home-orgs-list');
   if (!el) return;
   el.innerHTML = Object.keys(ORG_MAP).map(function(email) {
-    var org = ORG_MAP[email];
-    return '<div class="card" style="display:flex;align-items:center;gap:12px;">' +
-      '<div style="width:48px;height:48px;border-radius:14px;background:' + org.color + ';display:flex;align-items:center;justify-content:center;font-size:26px;">' + org.ico + '</div>' +
-      '<div><div style="font-weight:800;font-size:15px;">' + org.name + '</div>' +
-      '<div style="font-size:12px;color:var(--t2);margin-top:3px;">' + (curLang==='ko'?'파트너 기관':'Partner Organization') + '</div></div>' +
-      '</div>';
+    var org  = ORG_MAP[email];
+    var link = ORG_LINKS[email] || '#';
+    return '<a href="' + link + '" target="_blank" style="text-decoration:none;">' +
+      '<div class="card" style="display:flex;align-items:center;gap:12px;cursor:pointer;">' +
+        '<div style="width:48px;height:48px;border-radius:14px;background:' + org.color + ';display:flex;align-items:center;justify-content:center;font-size:26px;">' + org.ico + '</div>' +
+        '<div style="flex:1;">' +
+          '<div style="font-weight:800;font-size:15px;color:var(--tx);">' + org.name + '</div>' +
+          '<div style="font-size:12px;color:var(--t2);margin-top:3px;">' + (curLang==='ko'?'파트너 기관 · 탭하여 방문 →':'Partner Org · Tap to visit →') + '</div>' +
+        '</div>' +
+      '</div>' +
+    '</a>';
   }).join('');
 }
 
@@ -487,14 +479,20 @@ function loadHomeStatus(email) {
         done:    { ko:'이동완료', en:'Done',       cls:'badge-gr' }
       };
       cardEl.innerHTML = snap.docs.map(function(doc) {
-        var v = doc.data();
+        var v = doc.data(); var vid = doc.id;
         var st = stMap[v.status] || stMap.pending;
+        var canEdit = v.status === 'pending';
         return '<div class="flight-card">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
           '<div class="flight-route" style="font-size:14px;">ICN ✈️ ATL</div>' +
           '<span class="badge ' + st.cls + '">' + (isKo?st.ko:st.en) + '</span>' +
           '</div>' +
           '<div class="flight-detail">' + (v.airline||'') + ' · ' + (v.flightDate||'') + '</div>' +
+          (canEdit ?
+            '<div class="flight-actions" style="margin-top:10px;">' +
+            '<button class="btn-sm btn-sm-or" onclick="openFlightModal(\'' + vid + '\')">' + (isKo?'수정':'Edit') + '</button>' +
+            '<button class="btn-sm btn-sm-re" onclick="deleteFlight(\'' + vid + '\')">' + (isKo?'삭제':'Delete') + '</button>' +
+            '</div>' : '') +
           '</div>';
       }).join('');
     }).catch(function() { statusEl.style.display = 'none'; });
