@@ -10,6 +10,16 @@ var _dogFilter  = 'all';
 
 var SUPER_ADMIN_EMAIL = 'pawstclass.1@gmail.com';
 
+// 항공사명 → 코드 포함 표시명 (어드민 등에서 통일된 표기를 위해 사용)
+var AIRLINE_CODE_MAP = {
+  '대한항공':    '대한항공 KE',
+  '아시아나':    '아시아나 OZ',
+  '에어프레미아': '에어프레미아 RS'
+};
+function airlineDisplay(name) {
+  return AIRLINE_CODE_MAP[name] || name || '';
+}
+
 // ══════════════════════════════════════
 // 언어 토글
 // ══════════════════════════════════════
@@ -17,11 +27,15 @@ function togLang() {
   curLang = curLang === 'ko' ? 'en' : 'ko';
   applyLang();
   var label = curLang === 'ko' ? 'ENG' : '한국어';
+  // 화면 상단 고정 토글 + 각 탭 내부 토글(8-A-04) 모두 동기화
   ['lang-btn','lang-btn-vol'].forEach(function(id) {
     var btn = document.getElementById(id);
     if (btn) btn.textContent = label;
   });
-  // W9: 언어 전환 후 현재 탭 동적 컨텐츠 재렌더
+  document.querySelectorAll('.lang-toggle-tab').forEach(function(btn) {
+    btn.textContent = label;
+  });
+  // 언어 전환 후 현재 탭의 동적 컨텐츠를 다시 그려서 즉시 반영
   if (_curScreen === 's-main') {
     if (_curTab === 'home')     loadHome();
     if (_curTab === 'register') loadMyFlights();
@@ -34,6 +48,9 @@ function togLang() {
       var t = activeDashTab.id.replace('dt-','');
       setDashTab(t);
     }
+  }
+  if (_curScreen === 's-admindash') {
+    loadAdminDash();
   }
 }
 function applyLang() {
@@ -147,15 +164,42 @@ function closePrivacy() {
 // ══════════════════════════════════════
 function doGoogleLogin() {
   var isKo = curLang === 'ko';
+  var errEl = document.getElementById('vol-err');
+  if (errEl) { errEl.style.display = 'none'; }
+
   var provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+
   auth.signInWithPopup(provider)
     .catch(function(e) {
+      console.error('Google login error:', e.code, e.message);
       var msg = isKo ? '구글 로그인에 실패했습니다.' : 'Google login failed.';
-      if (e.code === 'auth/popup-closed-by-user')
+
+      if (e.code === 'auth/popup-closed-by-user') {
         msg = isKo ? '로그인 창이 닫혔습니다. 다시 시도해 주세요.' : 'Popup closed. Please try again.';
-      else if (e.code === 'auth/popup-blocked')
-        msg = isKo ? '팝업이 차단되었습니다. 브라우저 설정을 확인해 주세요.' : 'Popup blocked. Check browser settings.';
-      var errEl = document.getElementById('vol-err');
+      } else if (e.code === 'auth/popup-blocked') {
+        msg = isKo ? '팝업이 차단되었습니다. 브라우저 팝업 차단을 해제해 주세요.' : 'Popup blocked. Please allow popups for this site.';
+      } else if (e.code === 'auth/unauthorized-domain') {
+        // 가장 흔한 원인: Firebase Console에 현재 도메인이 승인되지 않음
+        msg = isKo
+          ? '이 도메인은 구글 로그인이 승인되지 않았습니다. (Firebase 콘솔 → Authentication → 설정 → 승인된 도메인에서 이 사이트 주소를 추가해야 합니다)'
+          : 'This domain is not authorized for Google login. (Add this domain in Firebase Console → Authentication → Settings → Authorized domains)';
+      } else if (e.code === 'auth/operation-not-allowed') {
+        msg = isKo
+          ? '구글 로그인이 아직 활성화되지 않았습니다. (Firebase 콘솔 → Authentication → Sign-in method에서 Google을 사용 설정해 주세요)'
+          : 'Google sign-in is not enabled. (Enable it in Firebase Console → Authentication → Sign-in method)';
+      } else if (e.code === 'auth/cancelled-popup-request') {
+        // 팝업 중복 클릭 - 무시 (에러 표시 안 함)
+        return;
+      } else if (e.code === 'auth/network-request-failed') {
+        msg = isKo ? '네트워크 연결을 확인해 주세요.' : 'Please check your network connection.';
+      } else {
+        // 알려지지 않은 에러는 코드까지 같이 보여줘서 디버깅 가능하게
+        msg = isKo
+          ? '구글 로그인에 실패했습니다. (오류 코드: ' + (e.code||'알수없음') + ')'
+          : 'Google login failed. (Error code: ' + (e.code||'unknown') + ')';
+      }
+
       if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
     });
 }
@@ -181,12 +225,16 @@ function doVolLogin() {
         localStorage.setItem('pawst_email', email);
     })
     .catch(function(e) {
-      var msg = isKo ? '로그인 오류가 발생했습니다.' : 'Login error.';
-      if (e.code === 'auth/invalid-email')       msg = isKo ? '이메일 형식이 올바르지 않습니다.' : 'Invalid email format.';
-      else if (e.code === 'auth/user-not-found') msg = isKo ? '등록되지 않은 이메일입니다.' : 'Email not found.';
-      else if (e.code === 'auth/wrong-password') msg = isKo ? '비밀번호가 올바르지 않습니다.' : 'Incorrect password.';
-      else if (e.code === 'auth/invalid-credential') msg = isKo ? '이메일 또는 비밀번호가 올바르지 않습니다.' : 'Incorrect email or password.';
-      else if (e.code === 'auth/too-many-requests') msg = isKo ? '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.' : 'Too many attempts. Try again later.';
+      console.error('Login error:', e.code, e.message);
+      var msg = isKo
+        ? '로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해 주세요.'
+        : 'Login failed. Please check your email and password.';
+      if (e.code === 'auth/invalid-email')       msg = isKo ? '이메일 형식이 올바르지 않습니다. (예: name@email.com)' : 'Invalid email format. (e.g. name@email.com)';
+      else if (e.code === 'auth/user-not-found') msg = isKo ? '등록되지 않은 이메일입니다. 회원가입 탭에서 먼저 가입해 주세요.' : 'No account found with this email. Please sign up first.';
+      else if (e.code === 'auth/wrong-password') msg = isKo ? '비밀번호가 올바르지 않습니다. 다시 입력하거나 "비밀번호 찾기"를 이용해 주세요.' : 'Incorrect password. Try again or use "Forgot password".';
+      else if (e.code === 'auth/invalid-credential') msg = isKo ? '이메일 또는 비밀번호가 올바르지 않습니다. 등록된 계정인지 확인해 주세요.' : 'Incorrect email or password. Please check your account details.';
+      else if (e.code === 'auth/too-many-requests') msg = isKo ? '로그인 시도가 너무 많습니다. 1-2분 후 다시 시도해 주세요.' : 'Too many attempts. Please wait 1-2 minutes and try again.';
+      else if (e.code === 'auth/network-request-failed') msg = isKo ? '네트워크 연결을 확인해 주세요.' : 'Please check your network connection.';
       showVolErr(msg);
     });
 }
@@ -227,6 +275,11 @@ function sendReset() {
 // ══════════════════════════════════════
 auth.onAuthStateChanged(function(user) {
   if (!user) return;
+  // 어드민 로그인 시도가 진행 중일 때는 doAdminLogin()이 직접 판단/라우팅을 끝낼 때까지
+  // 여기서 자동 라우팅을 하지 않는다. (기관 계정으로 어드민 로그인 시도 시 화면이
+  // 잘못 기관 대시보드로 새는 race condition 방지)
+  if (_adminLoginInProgress) return;
+
   // 기관
   if (ORG_MAP[user.email]) {
     var info = ORG_MAP[user.email];
@@ -298,6 +351,7 @@ function selEditAirline(btn, name) {
 // ══════════════════════════════════════
 function doRegister() {
   var isKo  = curLang === 'ko';
+  var name  = (document.getElementById('reg-name').value || '').trim();
   var date  = document.getElementById('reg-date').value;
   var kakao = (document.getElementById('reg-kakao').value || '').trim();
   var phone = (document.getElementById('reg-phone').value || '').trim();
@@ -306,6 +360,10 @@ function doRegister() {
 
   var user = auth.currentUser;
   if (!user) { scGo('s-vollogin'); return; }
+  if (!name) {
+    err.textContent = isKo ? '이름 또는 닉네임을 입력해 주세요.' : 'Please enter your name or nickname.';
+    err.style.display = 'block'; return;
+  }
   if (!_selAirline) {
     err.textContent = isKo ? '항공사를 선택해 주세요.' : 'Please select an airline.';
     err.style.display = 'block'; return;
@@ -329,6 +387,7 @@ function doRegister() {
   }
 
   db.collection('volunteers').add({
+    name:       name,
     email:      user.email,
     airline:    _selAirline,
     flightDate: date,
@@ -340,6 +399,7 @@ function doRegister() {
     alert(isKo
       ? '✅ 항공편이 등록되었습니다!\n파트너 기관에서 카카오톡 또는 전화로 연락드릴 예정입니다.'
       : '✅ Flight registered!\nPartner organizations will contact you via KakaoTalk or phone.');
+    document.getElementById('reg-name').value = '';
     document.getElementById('reg-date').value = '';
     document.getElementById('reg-kakao').value = '';
     document.getElementById('reg-phone').value = '';
@@ -396,7 +456,7 @@ function loadMyFlights() {
           '<span class="badge ' + st.cls + '">' + (curLang==='ko'?st.ko:st.en) + '</span>' +
           '</div>' +
           '<div class="flight-detail">' +
-          '🛫 ' + (v.airline||'') + ' · 📅 ' + (v.flightDate||'') + '<br>' +
+          '🛫 ' + airlineDisplay(v.airline) + ' · 📅 ' + (v.flightDate||'') + '<br>' +
           (v.kakao ? '💬 ' + v.kakao : '') +
           (v.kakao && v.phone ? ' · ' : '') +
           (v.phone ? '📞 ' + v.phone : '') +
@@ -429,6 +489,7 @@ function openFlightModal(vid) {
     if (!doc.exists) return;
     var v = doc.data();
     document.getElementById('flight-edit-id').value = vid;
+    document.getElementById('edit-name').value  = v.name || '';
     document.getElementById('edit-date').value  = v.flightDate || '';
     document.getElementById('edit-kakao').value = v.kakao || '';
     document.getElementById('edit-phone').value = v.phone || '';
@@ -450,9 +511,13 @@ function closeFlightModal() {
 function saveEditFlight() {
   var vid   = document.getElementById('flight-edit-id').value;
   var isKo  = curLang === 'ko';
+  var name  = (document.getElementById('edit-name').value || '').trim();
   var date  = document.getElementById('edit-date').value;
   var kakao = (document.getElementById('edit-kakao').value || '').trim();
   var phone = (document.getElementById('edit-phone').value || '').trim();
+  if (!name) {
+    alert(isKo ? '이름 또는 닉네임을 입력해 주세요.' : 'Please enter your name or nickname.'); return;
+  }
   if (!_editAirline) {
     alert(isKo ? '항공사를 선택해 주세요.' : 'Please select an airline.'); return;
   }
@@ -463,6 +528,7 @@ function saveEditFlight() {
     alert(isKo ? '카카오톡 ID 또는 전화번호를 입력해 주세요.' : 'Enter KakaoTalk ID or phone.'); return;
   }
   db.collection('volunteers').doc(vid).update({
+    name:       name,
     airline:    _editAirline,
     flightDate: date,
     kakao:      kakao,
@@ -489,7 +555,7 @@ function loadHome() {
 var ORG_LINKS = {
   'kpups@pc.com':   'https://www.kpupsforlove.org/',
   'adoptme@pc.com': 'https://adoptmekr.org/',
-  'gamjane@pc.com': 'https://www.instagram.com/gamjane_supportlist/'
+  'gamjane@pc.com': 'https://www.instagram.com/gamjane_house?igsh=dHlheGExMGg3ejRo'
 };
 
 function loadOrgCards() {
@@ -555,7 +621,7 @@ function loadHomeStatus(email) {
           '<div class="flight-route" style="font-size:14px;">ICN ✈️ ATL</div>' +
           '<span class="badge ' + st.cls + '">' + (isKo?st.ko:st.en) + '</span>' +
           '</div>' +
-          '<div class="flight-detail">' + (v.airline||'') + ' · ' + (v.flightDate||'') + '</div>' +
+          '<div class="flight-detail">' + airlineDisplay(v.airline) + ' · ' + (v.flightDate||'') + '</div>' +
           (canEdit ?
             '<div class="flight-actions" style="margin-top:10px;">' +
             '<button class="btn-sm btn-sm-or" onclick="openFlightModal(\'' + vid + '\')">' + (isKo?'수정':'Edit') + '</button>' +
@@ -585,7 +651,17 @@ function loadDogs() {
   db.collection('dogs').where('status','==','waiting').get()
     .then(function(snap) {
       var docs = snap.docs;
-      if (_dogFilter !== 'all') docs = docs.filter(function(d) { return d.data().orgEmail === _dogFilter; });
+      // 필터: 구버전 이메일(LEGACY_ORG_MAP)로 저장된 강아지도 같은 기관으로 인식하도록
+      // 이메일을 직접 비교하지 않고, "같은 기관"인지(기관명 일치)로 비교한다.
+      if (_dogFilter !== 'all') {
+        var targetOrg = getOrgInfo(_dogFilter);
+        docs = docs.filter(function(d) {
+          var dEmail = d.data().orgEmail;
+          if (dEmail === _dogFilter) return true; // 이메일 완전 일치
+          var dOrg = getOrgInfo(dEmail);
+          return targetOrg && dOrg && dOrg.name === targetOrg.name; // 같은 기관이면 일치로 간주
+        });
+      }
       if (!docs.length) {
         el.innerHTML = '<div class="empty-state"><div class="em">🐾</div><div class="msg">' + (isKo?'등록된 강아지가 없습니다.':'No dogs registered.') + '</div></div>';
         return;
@@ -608,7 +684,15 @@ function loadDogs() {
       // 인덱스 없을 때 fallback
       db.collection('dogs').get().then(function(snap) {
         var docs = snap.docs.filter(function(d) { return d.data().status === 'waiting'; });
-        if (_dogFilter !== 'all') docs = docs.filter(function(d) { return d.data().orgEmail === _dogFilter; });
+        if (_dogFilter !== 'all') {
+          var targetOrg2 = getOrgInfo(_dogFilter);
+          docs = docs.filter(function(d) {
+            var dEmail = d.data().orgEmail;
+            if (dEmail === _dogFilter) return true;
+            var dOrg = getOrgInfo(dEmail);
+            return targetOrg2 && dOrg && dOrg.name === targetOrg2.name;
+          });
+        }
         if (!docs.length) {
           el.innerHTML = '<div class="empty-state"><div class="em">🐾</div><div class="msg">' + (isKo?'등록된 강아지가 없습니다.':'No dogs registered.') + '</div></div>';
           return;
@@ -644,7 +728,8 @@ function loadMyPage() {
 
     // 봉사 통계 카드
     '<div class="mypage-stat-card" id="my-stat-card">' +
-      '<div style="font-size:13px;color:var(--t2);margin-bottom:12px;">' + (isKo?'내 봉사 현황':'My Volunteering') + '</div>' +
+      '<div style="font-size:13px;color:var(--t2);margin-bottom:4px;">' + (isKo?'내 봉사 현황':'My Volunteering') + '</div>' +
+      '<div style="font-size:11px;color:var(--t3);margin-bottom:12px;">' + (isKo?'※ 연락완료/이동완료는 파트너 기관이 직접 처리합니다':'※ Contacted/Done status is updated by partner organizations') + '</div>' +
       '<div style="display:flex;gap:12px;">' +
         '<div class="mypage-stat-box"><div class="mypage-stat-n" id="my-stat-total">-</div><div class="mypage-stat-l">' + (isKo?'총 신청':'Total') + '</div></div>' +
         '<div class="mypage-stat-box"><div class="mypage-stat-n" id="my-stat-done" style="color:var(--gr);">-</div><div class="mypage-stat-l">' + (isKo?'이동완료':'Completed') + '</div></div>' +
@@ -703,7 +788,7 @@ function loadMyPage() {
             '<span class="badge ' + st.cls + '">' + (isKo ? st.ko : st.en) + '</span>' +
           '</div>' +
           '<div class="flight-detail">' +
-            '🛫 ' + (v.airline||'') + ' · 📅 ' + dateStr +
+            '🛫 ' + airlineDisplay(v.airline) + ' · 📅 ' + dateStr +
             (v.kakao ? '<br>💬 ' + v.kakao : '') +
             (v.phone ? (v.kakao?' · ':'<br>') + '📞 ' + v.phone : '') +
           '</div>' +
@@ -750,12 +835,14 @@ function openDogModal(did) {
       document.getElementById('dog-name').value   = d.name   || '';
       document.getElementById('dog-breed').value  = d.breed  || '';
       document.getElementById('dog-weight').value = d.weight || '';
-      document.getElementById('dog-period').value = d.period || '';
+      // period 필드 호환: 신규(periodStart/periodEnd) + 구버전(period 텍스트) 모두 지원
+      document.getElementById('dog-period-start').value = d.periodStart || '';
+      document.getElementById('dog-period-end').value   = d.periodEnd   || '';
       document.getElementById('dog-note').value   = d.note   || '';
     });
   } else {
     titleEl.textContent = isKo ? '강아지 등록' : 'Register Dog';
-    ['dog-name','dog-breed','dog-weight','dog-period','dog-note'].forEach(function(id) {
+    ['dog-name','dog-breed','dog-weight','dog-period-start','dog-period-end','dog-note'].forEach(function(id) {
       document.getElementById(id).value = '';
     });
   }
@@ -770,19 +857,27 @@ function saveDog() {
   if (!user) return;
   var isKo   = curLang === 'ko';
   var did    = document.getElementById('dog-edit-id').value;
-  var name   = (document.getElementById('dog-name').value || '').trim();
-  var breed  = (document.getElementById('dog-breed').value || '').trim();
-  var weight = (document.getElementById('dog-weight').value || '').trim();
-  var period = (document.getElementById('dog-period').value || '').trim();
-  var note   = (document.getElementById('dog-note').value || '').trim();
+  var name        = (document.getElementById('dog-name').value || '').trim();
+  var breed       = (document.getElementById('dog-breed').value || '').trim();
+  var weight      = (document.getElementById('dog-weight').value || '').trim();
+  var periodStart = document.getElementById('dog-period-start').value || '';
+  var periodEnd   = document.getElementById('dog-period-end').value || '';
+  var note        = (document.getElementById('dog-note').value || '').trim();
   var errEl  = document.getElementById('dog-modal-err');
   errEl.style.display = 'none';
 
   if (!name) { errEl.textContent = isKo ? '이름을 입력해 주세요.' : 'Please enter name.'; errEl.style.display = 'block'; return; }
+  if (periodStart && periodEnd && periodEnd < periodStart) {
+    errEl.textContent = isKo ? '종료일은 시작일 이후여야 합니다.' : 'End date must be after start date.';
+    errEl.style.display = 'block'; return;
+  }
+
+  // period: 화면 표시용 텍스트(구버전 호환) — 날짜가 있으면 "YYYY-MM-DD ~ YYYY-MM-DD" 형식으로 자동 생성
+  var period = (periodStart && periodEnd) ? (periodStart + ' ~ ' + periodEnd) : (periodStart || periodEnd || '');
 
   // 신규 등록은 status:'waiting' 포함, 수정은 status 제외 (기존 status 유지)
-  var newData  = { name: name, breed: breed, weight: weight, period: period, note: note, orgEmail: user.email };
-  var editData = { name: name, breed: breed, weight: weight, period: period, note: note };
+  var newData  = { name: name, breed: breed, weight: weight, period: period, periodStart: periodStart, periodEnd: periodEnd, note: note, orgEmail: user.email };
+  var editData = { name: name, breed: breed, weight: weight, period: period, periodStart: periodStart, periodEnd: periodEnd, note: note };
 
   var p = did
     ? db.collection('dogs').doc(did).update(editData)
@@ -866,7 +961,7 @@ function loadDashVols() {
         var stTxt   = v.status === 'matched' ? (isKo?'연락완료':'Contacted') : (isKo?'대기중':'Pending');
         return '<div class="card">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-          '<div style="font-weight:800;">✈️ ' + (v.airline||'') + '</div>' +
+          '<div style="font-weight:800;">' + (v.name ? '👤 '+v.name+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + '</div>' +
           '<span class="badge ' + stCls + '">' + stTxt + '</span>' +
           '</div>' +
           '<div style="font-size:13px;color:var(--t2);margin-top:6px;">📅 ' + (v.flightDate||'') + ' · ICN → ATL</div>' +
@@ -902,7 +997,7 @@ function loadDashVols() {
           var kakaoId = v.kakao || '';
           var phone   = v.phone || '';
           return '<div class="card">' +
-            '<div style="font-weight:800;">✈️ ' + (v.airline||'') + ' · 📅 ' + (v.flightDate||'') + '</div>' +
+            '<div style="font-weight:800;">' + (v.name ? '👤 '+v.name+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + ' · 📅 ' + (v.flightDate||'') + '</div>' +
             '<div style="font-size:13px;margin-top:6px;">' +
             (kakaoId?'💬 '+kakaoId:'') + (kakaoId&&phone?' · ':'') + (phone?'📞 '+phone:'') +
             '</div>' +
@@ -978,7 +1073,7 @@ function loadDashDone() {
         catch(e) { doneDate = ''; }
         return '<div class="card">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-            '<div style="font-weight:800;">✈️ ' + (v.airline||'') + '</div>' +
+            '<div style="font-weight:800;">' + (v.name ? '👤 '+v.name+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + '</div>' +
             '<span class="badge badge-gr">' + (isKo?'이동완료':'Done') + '</span>' +
           '</div>' +
           '<div style="font-size:13px;color:var(--t2);margin-top:6px;">📅 ' + (v.flightDate||'') + ' · ICN → ATL</div>' +
@@ -1011,31 +1106,60 @@ function markDone(vid) {
 
 function undoDone(vid) {
   var isKo = curLang === 'ko';
-  if (!confirm(isKo ? '대기 상태로 되돌릴까요?' : 'Undo and return to pending?')) return;
-  db.collection('volunteers').doc(vid).update({ status: 'pending' })
-    .then(function() { loadDashDone(); loadDashVols(); })
+  if (!confirm(isKo ? '대기 상태로 되돌릴까요?\n연락완료 기록도 함께 초기화됩니다.' : 'Undo and return to pending?\nContact record will also be reset.')) return;
+  // 완료 상태를 되돌릴 때 doneAt, matchedOrgEmail도 함께 초기화해서
+  // "대기중"인데 예전 기관 기록이 남아 있는 어색한 상태가 되지 않도록 한다.
+  db.collection('volunteers').doc(vid).update({
+    status: 'pending',
+    doneAt: firebase.firestore.FieldValue.delete(),
+    matchedOrgEmail: firebase.firestore.FieldValue.delete()
+  })
+    .then(function() {
+      loadDashDone();
+      loadDashVols();
+      alert(isKo ? '대기 상태로 되돌렸습니다.' : 'Reverted to pending.');
+    })
     .catch(function(e) { alert('오류: ' + e.message); });
 }
 
 // ══════════════════════════════════════
 // 어드민
 // ══════════════════════════════════════
+// 어드민이 아닌 계정(예: 기관 계정)으로 어드민 로그인을 시도했을 때,
+// onAuthStateChanged가 먼저 발동해 기관 대시보드로 화면을 바꿔버리는 race condition을
+// 막기 위한 플래그. true인 동안은 onAuthStateChanged의 자동 라우팅을 잠시 막는다.
+var _adminLoginInProgress = false;
+
 function doAdminLogin() {
   var email = (document.getElementById('admin-email').value || '').trim();
   var pw    = document.getElementById('admin-pw').value || '';
+  var isKo  = curLang === 'ko';
   document.getElementById('admin-err').style.display = 'none';
+
+  _adminLoginInProgress = true;
+
   auth.signInWithEmailAndPassword(email, pw)
     .then(function(cred) {
       if (cred.user.email !== SUPER_ADMIN_EMAIL) {
-        auth.signOut();
-        document.getElementById('admin-err').textContent = '어드민 계정이 아닙니다.';
-        document.getElementById('admin-err').style.display = 'block';
-        return;
+        // 어드민이 아닌 계정 — 기관 대시보드 등으로 새지 않도록 즉시 로그아웃
+        return auth.signOut().then(function() {
+          _adminLoginInProgress = false;
+          document.getElementById('admin-err').textContent = isKo
+            ? '어드민 계정이 아닙니다. (기관 계정은 단체 관리자 로그인을 이용해 주세요)'
+            : 'This is not an admin account. (Organizations should use Organization Login instead)';
+          document.getElementById('admin-err').style.display = 'block';
+        });
       }
+      _adminLoginInProgress = false;
       scGo('s-admindash'); loadAdminDash();
     })
-    .catch(function() {
-      document.getElementById('admin-err').textContent = '로그인 실패. 이메일/비밀번호를 확인하세요.';
+    .catch(function(e) {
+      _adminLoginInProgress = false;
+      var msg = isKo ? '로그인 실패. 이메일/비밀번호를 확인하세요.' : 'Login failed. Please check email/password.';
+      if (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found') {
+        msg = isKo ? '이메일 또는 비밀번호가 올바르지 않습니다.' : 'Incorrect email or password.';
+      }
+      document.getElementById('admin-err').textContent = msg;
       document.getElementById('admin-err').style.display = 'block';
     });
 }
@@ -1060,14 +1184,34 @@ function loadAdminDash() {
     Object.keys(ORG_MAP).forEach(function(e) { orgDone[e] = 0; });
 
     // 강아지 기관별 집계
+    // 기관명(name) 기준으로 집계해서, 구버전 이메일(LEGACY_ORG_MAP)로 등록된 강아지도
+    // 같은 기관으로 합산되도록 한다. 이렇게 하면 "강아지 목록(전체)"과
+    // "기관별 강아지 현황(집계)"의 합계가 항상 일치한다.
     var orgDogs = {};
     Object.keys(ORG_MAP).forEach(function(e) { orgDogs[e] = { waiting:0, total:0 }; });
+    var uncategorizedDogs = { waiting:0, total:0 }; // 어떤 기관 맵에도 없는 이메일(완전 미등록)
+
     dogs.docs.forEach(function(doc) {
       var d = doc.data();
+      // 1순위: 현재 ORG_MAP에 정확히 일치
       if (orgDogs[d.orgEmail]) {
         orgDogs[d.orgEmail].total++;
         if (d.status === 'waiting') orgDogs[d.orgEmail].waiting++;
+        return;
       }
+      // 2순위: LEGACY_ORG_MAP 등 다른 이메일이지만 같은 기관명 → 현재 이메일 키로 합산
+      var dOrgInfo = getOrgInfo(d.orgEmail);
+      if (dOrgInfo) {
+        var matchedKey = Object.keys(ORG_MAP).filter(function(k) { return ORG_MAP[k].name === dOrgInfo.name; })[0];
+        if (matchedKey) {
+          orgDogs[matchedKey].total++;
+          if (d.status === 'waiting') orgDogs[matchedKey].waiting++;
+          return;
+        }
+      }
+      // 3순위: 어떤 맵에도 없음 (완전히 미등록된 기관 이메일)
+      uncategorizedDogs.total++;
+      if (d.status === 'waiting') uncategorizedDogs.waiting++;
     });
 
     // 월별 완료 집계
@@ -1084,11 +1228,12 @@ function loadAdminDash() {
     var airlineCnt = {};
     vols.docs.forEach(function(doc) {
       var v = doc.data();
-      var a = v.airline || '기타';
+      var a = airlineDisplay(v.airline) || '기타';
       airlineCnt[a] = (airlineCnt[a] || 0) + 1;
     });
 
-    // 기관별 통계 렌더
+    // 기관별 통계 렌더 — 합계가 "강아지 목록(전체 dogs.size)"과 항상 일치하도록
+    // ORG_MAP 3개 기관 + 미분류(uncategorizedDogs)를 모두 더해서 보여준다.
     var orgHtml = '<div class="sec-hd" style="margin-top:20px;">기관별 강아지 현황</div>';
     orgHtml += Object.keys(ORG_MAP).map(function(email) {
       var org = ORG_MAP[email];
@@ -1101,6 +1246,15 @@ function loadAdminDash() {
         '</div>' +
       '</div>';
     }).join('');
+    if (uncategorizedDogs.total > 0) {
+      orgHtml += '<div class="card" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;background:#FFF8F0;">' +
+        '<div style="font-size:28px;">❓</div>' +
+        '<div style="flex:1;">' +
+          '<div style="font-weight:800;">미분류 (등록되지 않은 기관 이메일)</div>' +
+          '<div style="font-size:12px;color:var(--t2);margin-top:4px;">대기 강아지 ' + uncategorizedDogs.waiting + '마리 · 총 등록 ' + uncategorizedDogs.total + '마리</div>' +
+        '</div>' +
+      '</div>';
+    }
 
     // 월별 통계 렌더
     var months = Object.keys(monthlyDone).sort().reverse().slice(0,6);
@@ -1142,7 +1296,7 @@ function loadAdminDash() {
       var stTxt = { pending:'대기중', matched:'연락완료', done:'이동완료' };
       return '<div class="card" style="margin-bottom:8px;">' +
         '<div style="display:flex;justify-content:space-between;">' +
-          '<b>✈️ ' + (v.airline||'') + ' · ' + (v.flightDate||'') + '</b>' +
+          '<b>' + (v.name ? '👤 '+v.name+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + ' · ' + (v.flightDate||'') + '</b>' +
           '<span class="badge ' + (stMap[v.status]||'badge-gy') + '">' + (stTxt[v.status]||v.status||'') + '</span>' +
         '</div>' +
         '<div style="font-size:12px;color:var(--t2);margin-top:4px;">' +
@@ -1201,8 +1355,11 @@ function copyKakao(id) {
 // ══════════════════════════════════════
 // 앱 종료 팝업 (갤럭시 백버튼)
 // ══════════════════════════════════════
+var _exitPopupOpen = false;
+
 function showAppExitPopup() {
-  if (document.getElementById('app-exit-popup')) return;
+  if (_exitPopupOpen) return;
+  _exitPopupOpen = true;
   var isKo = curLang === 'ko';
   var pop = document.createElement('div');
   pop.id = 'app-exit-popup';
@@ -1215,44 +1372,69 @@ function showAppExitPopup() {
     '<button class="exit-confirm" onclick="appExit()">' + (isKo?'종료':'Exit') + '</button>' +
     '</div></div>';
   document.body.appendChild(pop);
+  // 팝업이 떠 있는 상태를 히스토리에 한 칸 더 쌓아서, 팝업 위에서 뒤로가기 한 번 더 누르면
+  // (브라우저가 진짜로 이탈하기 전에) 이 이벤트를 우리가 먼저 가로채 팝업만 닫도록 한다.
   history.pushState({ popup: 'exit' }, '', '');
 }
 function closeExitPopup() {
   var el = document.getElementById('app-exit-popup');
   if (el) el.remove();
+  _exitPopupOpen = false;
 }
-function appExit() { window.close(); history.go(-(history.length - 1)); }
+function appExit() {
+  // 보안 정책상 스크립트로 브라우저/웹뷰를 강제 종료하는 것은 대부분 환경에서 차단된다.
+  // window.close()는 "사용자가 직접 연 탭"이 아니면 동작하지 않는 경우가 많으므로,
+  // 시도는 하되 실패하더라도 앱이 깨지지 않도록 팝업만 닫고 안전하게 머무른다.
+  closeExitPopup();
+  try { window.close(); } catch (e) {}
+}
 
 // ══════════════════════════════════════
-// 백버튼 (갤럭시 안드로이드)
+// 백버튼 (갤럭시 안드로이드) — 근본 수정
+//
+// 문제였던 부분: 기존 코드는 popstate 핸들러 안에서 매번 pushState를 호출했는데,
+// 종료팝업(showAppExitPopup)도 "또" pushState를 호출하다 보니 히스토리 스택에
+// 우리가 의도하지 않은 엔트리가 섞여 쌓였다. 그 상태에서 "종료" 또는 한 번 더
+// 뒤로가기를 누르면 실제 브라우저 히스토리가 다 소진되어 버려서 confirm 절차를
+// 거치지 않고 곧바로 앱이 종료(이탈)되는 현상이 발생했다.
+//
+// 해결: 화면이 처음 로드될 때 더미 히스토리를 "딱 한 번"만 깔아두고,
+// 이후 모든 popstate에서는 즉시 그 더미 상태를 다시 채워(pushState) 넣어서
+// 브라우저의 실제 "한 칸 뒤로(앱 이탈)"가 절대 일어나지 않게 만든다.
+// 화면 전환(scGo, setTab)이 추가로 pushState를 부르더라도, 더미 상태가 항상
+// 맨 위에 다시 덮어씌워지므로 동일한 원칙이 유지된다.
 // ══════════════════════════════════════
 window.addEventListener('popstate', function() {
-  history.pushState({}, '', '');
+  // 가장 먼저 히스토리를 다시 채워서, 어떤 분기를 타든 "진짜 뒤로가기(이탈)"를 차단
+  history.pushState({ guard: true }, '', '');
 
-  // ① 종료 팝업
-  if (document.getElementById('app-exit-popup')) { closeExitPopup(); return; }
+  // ① 종료 확인 팝업이 떠 있으면: 팝업만 닫는다 (절대 종료하지 않음)
+  if (_exitPopupOpen) { closeExitPopup(); return; }
 
-  // ① 개인정보 모달
-  if (document.getElementById('privacy-modal') && document.getElementById('privacy-modal').style.display !== 'none') { closePrivacy(); return; }
+  // ② 개인정보 모달
+  var privacyModal = document.getElementById('privacy-modal');
+  if (privacyModal && privacyModal.style.display !== 'none') { closePrivacy(); return; }
 
-  // ② 강아지 등록 모달
-  if (document.getElementById('dog-modal').style.display !== 'none') { closeDogModal(); return; }
+  // ③ 강아지 등록 모달
+  var dogModal = document.getElementById('dog-modal');
+  if (dogModal && dogModal.style.display !== 'none') { closeDogModal(); return; }
 
-  // ③ 항공편 수정 모달
-  if (document.getElementById('flight-modal').style.display !== 'none') { closeFlightModal(); return; }
+  // ④ 항공편 수정 모달
+  var flightModal = document.getElementById('flight-modal');
+  if (flightModal && flightModal.style.display !== 'none') { closeFlightModal(); return; }
 
-  // ④ 기관 대시보드 → 스플래시
+  // ⑤ 기관 대시보드 → 스플래시
   if (_curScreen === 's-orgdash') { scGo('s-splash'); return; }
 
-  // ⑤ 로그인/온보딩/어드민 → 스플래시
+  // ⑥ 로그인/온보딩/어드민 → 스플래시
   if (['s-orglogin','s-vollogin','s-adminlogin','s-admindash','s-ob'].indexOf(_curScreen) > -1) {
     scGo('s-splash'); return;
   }
 
-  // ⑥ 메인 — 홈 아닌 탭 → 홈
+  // ⑦ 메인 — 홈이 아닌 탭 → 홈
   if (_curScreen === 's-main' && _curTab !== 'home') { setTab('home'); return; }
 
-  // ⑦ 메인 홈 or 스플래시 → 종료 확인
+  // ⑧ 메인 홈 또는 스플래시 화면 → 종료 확인 팝업 (여기서 절대 즉시 종료되지 않는다)
   showAppExitPopup();
 });
 

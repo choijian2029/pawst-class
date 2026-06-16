@@ -166,7 +166,8 @@
 <!-- ══ 봉사자 메인 ══ -->
 <div class="sc" id="s-main">
   <!-- 탭 콘텐츠 -->
-  <div id="t-home" style="flex:1;overflow-y:auto;padding:16px 16px 90px;">
+  <div id="t-home" style="flex:1;overflow-y:auto;padding:16px 16px 90px;position:relative;">
+    <div class="lang-toggle-tab" onclick="togLang()">ENG</div>
     <!-- 홈 배너 -->
     <div class="home-banner">
       <div class="home-banner-title" data-ko="안녕하세요! 👋" data-en="Hello! 👋">안녕하세요! 👋</div>
@@ -201,7 +202,8 @@
   </div>
 
   <!-- 항공편 등록 탭 -->
-  <div id="t-register" style="display:none;flex:1;overflow-y:auto;padding:16px 16px 90px;">
+  <div id="t-register" style="display:none;flex:1;overflow-y:auto;padding:16px 16px 90px;position:relative;">
+    <div class="lang-toggle-tab" onclick="togLang()">ENG</div>
     <div class="sec-hd" data-ko="✈️ 항공편 등록" data-en="✈️ Register Flight">✈️ 항공편 등록</div>
     <div class="sec-sub" data-ko="인천(ICN) → 애틀란타(ATL) 노선 봉사자 정보를 등록해주세요. 등록 후 파트너 기관에서 카카오톡으로 직접 연락드립니다." data-en="Register your ICN → ATL flight info. Partner organizations will contact you via KakaoTalk.">인천(ICN) → 애틀란타(ATL) 노선 봉사자 정보를 등록해주세요. 등록 후 파트너 기관에서 카카오톡으로 직접 연락드립니다.</div>
 
@@ -214,6 +216,8 @@
     <!-- 등록 폼 -->
     <div id="reg-form">
       <div id="reg-err" class="err-msg"></div>
+      <label class="fi-label" data-ko="이름 / 닉네임" data-en="Name / Nickname">이름 / 닉네임</label>
+      <input class="fi" id="reg-name" placeholder="예: 최지안">
       <label class="fi-label" data-ko="항공사" data-en="Airline">항공사</label>
       <div class="chip-row" id="reg-airline-chips">
         <button class="chip" onclick="selAirline(this,'대한항공')" data-ko="대한항공 KE" data-en="Korean Air KE">대한항공 KE</button>
@@ -239,7 +243,8 @@
   </div>
 
   <!-- 강아지 탭 -->
-  <div id="t-dogs" style="display:none;flex:1;overflow-y:auto;padding:16px 16px 90px;">
+  <div id="t-dogs" style="display:none;flex:1;overflow-y:auto;padding:16px 16px 90px;position:relative;">
+    <div class="lang-toggle-tab" onclick="togLang()">ENG</div>
     <div class="sec-hd" data-ko="🐾 이동 대기 강아지" data-en="🐾 Dogs Waiting">🐾 이동 대기 강아지</div>
     <div class="sec-sub" data-ko="파트너 기관의 이동봉사 대기 강아지 목록입니다. 항공편을 등록하면 기관에서 연락드려요." data-en="Dogs waiting for transport from our partner organizations. Register your flight and they'll reach out.">파트너 기관의 이동봉사 대기 강아지 목록입니다. 항공편을 등록하면 기관에서 연락드려요.</div>
     <!-- 기관 필터 -->
@@ -253,7 +258,8 @@
   </div>
 
   <!-- 마이페이지 탭 -->
-  <div id="t-mypage" style="display:none;flex:1;overflow-y:auto;padding:16px 16px 90px;">
+  <div id="t-mypage" style="display:none;flex:1;overflow-y:auto;padding:16px 16px 90px;position:relative;">
+    <div class="lang-toggle-tab" onclick="togLang()">ENG</div>
     <div class="sec-hd" data-ko="👤 마이페이지" data-en="👤 My Page">👤 마이페이지</div>
     <div id="mypage-content"></div>
   </div>
@@ -277,6 +283,7 @@
 
 <!-- ══ 기관 로그인 ══ -->
 <div class="sc" id="s-orglogin">
+  <div class="lang-toggle" onclick="togLang()">ENG</div>
   <div class="login-hero">
     <div class="login-emoji">🏥</div>
     <div class="login-title" data-ko="단체 관리자 로그인" data-en="Organization Login">단체 관리자 로그인</div>
@@ -297,7 +304,10 @@
 <div class="sc" id="s-orgdash">
   <div class="top-hd">
     <div class="top-hd-title" id="org-dash-title">🏥 단체 대시보드</div>
-    <button class="btn-sm btn-sm-or" onclick="doOrgLogout()" data-ko="로그아웃" data-en="Logout">로그아웃</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div class="lang-toggle-tab" style="position:static;" onclick="togLang()">ENG</div>
+      <button class="btn-sm btn-sm-or" onclick="doOrgLogout()" data-ko="로그아웃" data-en="Logout">로그아웃</button>
+    </div>
   </div>
   <div class="dash-tab-row">
     <button class="dash-tab on" id="dt-dogs" onclick="setDashTab('dogs')" data-ko="🐾 강아지" data-en="🐾 Dogs">🐾 강아지</button>
@@ -310,11 +320,11 @@
       <div id="dash-dogs-list"></div>
     </div>
     <div id="dash-vols" style="display:none;">
-      <div class="sec-sub" data-ko="이동봉사 신청한 봉사자 목록입니다. 카카오톡 ID를 눌러 직접 연락하세요." data-en="Volunteers registered for transport. Tap KakaoTalk ID to contact them directly.">이동봉사 신청한 봉사자 목록입니다. 카카오톡 ID를 눌러 직접 연락하세요.</div>
+      <div class="sec-sub" data-ko="이동봉사 신청한 봉사자 목록입니다. 카카오톡/전화로 연락 후 아래 '📱 연락완료 표시' 버튼을 눌러주세요. (이 버튼은 기관이 직접 눌러야 합니다)" data-en="Volunteers registered for transport. Contact them via KakaoTalk/phone, then tap '📱 Mark Contacted' below. (Organizations press this themselves — it is not automatic)">이동봉사 신청한 봉사자 목록입니다. 카카오톡/전화로 연락 후 아래 '📱 연락완료 표시' 버튼을 눌러주세요. (이 버튼은 기관이 직접 눌러야 합니다)</div>
       <div id="dash-vols-list"></div>
     </div>
     <div id="dash-done" style="display:none;">
-      <div class="sec-sub" data-ko="이동완료 처리된 봉사 내역입니다." data-en="Completed transport records.">이동완료 처리된 봉사 내역입니다.</div>
+      <div class="sec-sub" data-ko="실제 항공편 탑승 및 이동이 끝난 후, 기관이 직접 '🏁 이동완료 처리' 버튼을 눌러 기록한 내역입니다." data-en="Records marked by organizations after the actual flight and transport is complete, using the '🏁 Mark as Done' button.">실제 항공편 탑승 및 이동이 끝난 후, 기관이 직접 '🏁 이동완료 처리' 버튼을 눌러 기록한 내역입니다.</div>
       <div id="dash-done-list"></div>
     </div>
   </div>
@@ -322,19 +332,20 @@
 
 <!-- ══ 어드민 로그인 ══ -->
 <div class="sc" id="s-adminlogin">
+  <div class="lang-toggle" onclick="togLang()">ENG</div>
   <div class="login-hero">
     <div class="login-emoji">⚙️</div>
     <div class="login-title">Admin Login</div>
-    <div class="login-sub">PAWST CLASS 관리자</div>
+    <div class="login-sub" data-ko="PAWST CLASS 관리자" data-en="PAWST CLASS Administrator">PAWST CLASS 관리자</div>
   </div>
   <div class="login-body">
     <div id="admin-err" class="err-msg"></div>
-    <label class="fi-label">이메일</label>
+    <label class="fi-label" data-ko="이메일" data-en="Email">이메일</label>
     <input class="fi" id="admin-email" type="email" placeholder="admin@email.com">
-    <label class="fi-label">비밀번호</label>
+    <label class="fi-label" data-ko="비밀번호" data-en="Password">비밀번호</label>
     <input class="fi" id="admin-pw" type="password" placeholder="••••••••">
-    <button class="btn-pr" onclick="doAdminLogin()">로그인</button>
-    <button class="btn-sec" onclick="scGo('s-splash')">← 돌아가기</button>
+    <button class="btn-pr" onclick="doAdminLogin()" data-ko="로그인" data-en="Login">로그인</button>
+    <button class="btn-sec" onclick="scGo('s-splash')" data-ko="← 돌아가기" data-en="← Back">← 돌아가기</button>
   </div>
 </div>
 
@@ -391,7 +402,11 @@
     <label class="fi-label" data-ko="체중 (kg)" data-en="Weight (kg)">체중 (kg)</label>
     <input class="fi" id="dog-weight" type="number" placeholder="3.5">
     <label class="fi-label" data-ko="이동 가능 기간" data-en="Available Period">이동 가능 기간</label>
-    <input class="fi" id="dog-period" placeholder="예: 2026-07-01 ~ 2026-07-31">
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input class="fi" id="dog-period-start" type="date" style="flex:1;">
+      <span style="color:var(--t3);font-size:13px;">~</span>
+      <input class="fi" id="dog-period-end" type="date" style="flex:1;">
+    </div>
     <label class="fi-label" data-ko="특이사항 (선택)" data-en="Notes (optional)">특이사항 (선택)</label>
     <textarea class="fi" id="dog-note" placeholder="건강 상태, 성격 등" style="height:80px;resize:none;"></textarea>
     <button class="btn-pr" onclick="saveDog()" data-ko="저장" data-en="Save">저장</button>
@@ -405,6 +420,8 @@
     <div class="modal-handle"></div>
     <div class="modal-title" data-ko="항공편 수정" data-en="Edit Flight">항공편 수정</div>
     <input type="hidden" id="flight-edit-id">
+    <label class="fi-label" data-ko="이름 / 닉네임" data-en="Name / Nickname">이름 / 닉네임</label>
+    <input class="fi" id="edit-name" placeholder="예: 최지안">
     <label class="fi-label" data-ko="항공사" data-en="Airline">항공사</label>
     <div class="chip-row" id="edit-airline-chips">
       <button class="chip" onclick="selEditAirline(this,'대한항공')" data-ko="대한항공 KE" data-en="Korean Air KE">대한항공 KE</button>
