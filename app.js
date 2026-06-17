@@ -7,17 +7,23 @@ var _curTab     = 'home';
 var _selAirline = '';
 var _editAirline = '';
 var _dogFilter  = 'all';
+var _curDashTab = 'dogs'; // 기관 대시보드 현재 탭 (백버튼 단계적 이동에 사용)
 
 var SUPER_ADMIN_EMAIL = 'pawstclass.1@gmail.com';
 
-// 항공사명 → 코드 포함 표시명 (어드민 등에서 통일된 표기를 위해 사용)
+// 항공사명 → 코드 포함 표시명 (한/영 모두 지원).
+// Firestore에는 항상 한글 원어("대한항공" 등)로 저장되므로, 화면에 보여줄 때
+// 현재 언어(curLang)에 맞는 표시명으로 변환한다. 이렇게 해야 영어 모드에서
+// 이미 등록된 항공편 카드에도 "Korean Air KE"처럼 영어로 보인다.
 var AIRLINE_CODE_MAP = {
-  '대한항공':    '대한항공 KE',
-  '아시아나':    '아시아나 OZ',
-  '에어프레미아': '에어프레미아 RS'
+  '대한항공':    { ko: '대한항공 KE',    en: 'Korean Air KE' },
+  '아시아나':    { ko: '아시아나 OZ',    en: 'Asiana OZ' },
+  '에어프레미아': { ko: '에어프레미아 RS', en: 'Air Premia RS' }
 };
 function airlineDisplay(name) {
-  return AIRLINE_CODE_MAP[name] || name || '';
+  var entry = AIRLINE_CODE_MAP[name];
+  if (!entry) return name || '';
+  return curLang === 'ko' ? entry.ko : entry.en;
 }
 
 // ══════════════════════════════════════
@@ -62,13 +68,21 @@ function applyLang() {
 
 // ══════════════════════════════════════
 // 화면 전환
+//
+// _fromPopstate: popstate(뒤로가기) 처리 중에 scGo/setTab이 호출될 때는 true로
+// 넘긴다. popstate 핸들러가 이미 history.pushState로 가드를 한 번 채워놓았기
+// 때문에, 여기서 또 pushState를 하면 "뒤로가기 1번 = 히스토리 2칸 소비"가 되어
+// 버튼을 누른 횟수와 실제 화면 단계가 어긋나는 문제가 생긴다(종료 확인 팝업이
+// 떠 있는데 한 번 더 뒤로가기를 누르면 즉시 종료되는 것처럼 보이는 버그의 원인).
 // ══════════════════════════════════════
+var _fromPopstate = false;
+
 function scGo(id) {
   document.querySelectorAll('.sc').forEach(function(el) { el.classList.remove('on'); });
   var el = document.getElementById(id);
   if (el) el.classList.add('on');
   _curScreen = id;
-  history.pushState({ screen: id }, '', '');
+  if (!_fromPopstate) history.pushState({ screen: id }, '', '');
 }
 
 // ══════════════════════════════════════
@@ -88,13 +102,14 @@ function setTab(t) {
   if (t === 'register') loadMyFlights();
   if (t === 'dogs')     loadDogs();
   if (t === 'mypage')   loadMyPage();
-  history.pushState({ screen: 's-main', tab: t }, '', '');
+  if (!_fromPopstate) history.pushState({ screen: 's-main', tab: t }, '', '');
 }
 
 // ══════════════════════════════════════
 // 기관 대시보드 탭 전환
 // ══════════════════════════════════════
 function setDashTab(t) {
+  _curDashTab = t;
   ['dogs','vols','done'].forEach(function(id) {
     var el = document.getElementById('dash-' + id);
     if (el) el.style.display = id === t ? 'block' : 'none';
@@ -221,8 +236,13 @@ function doVolLogin() {
   if (!pw)    { showVolErr(isKo ? '비밀번호를 입력해 주세요.' : 'Please enter your password.'); return; }
   auth.signInWithEmailAndPassword(email, pw)
     .then(function() {
-      if (document.getElementById('vol-remember').checked)
+      // 체크되어 있으면 저장하고, 체크 해제 상태면 이전에 저장된 이메일도 함께 지워서
+      // "저장 안 함"을 선택했는데 다음 접속 때 예전 이메일이 자동입력되는 일이 없게 한다.
+      if (document.getElementById('vol-remember').checked) {
         localStorage.setItem('pawst_email', email);
+      } else {
+        localStorage.removeItem('pawst_email');
+      }
     })
     .catch(function(e) {
       console.error('Login error:', e.code, e.message);
@@ -452,7 +472,7 @@ function loadMyFlights() {
         var canEdit = v.status === 'pending';
         return '<div class="flight-card">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
-          '<div class="flight-route">ICN ✈️ ATL</div>' +
+          '<div class="flight-route">' + (v.name ? v.name+' · ' : '') + 'ICN ✈️ ATL</div>' +
           '<span class="badge ' + st.cls + '">' + (curLang==='ko'?st.ko:st.en) + '</span>' +
           '</div>' +
           '<div class="flight-detail">' +
@@ -618,7 +638,7 @@ function loadHomeStatus(email) {
         var canEdit = v.status === 'pending';
         return '<div class="flight-card">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-          '<div class="flight-route" style="font-size:14px;">ICN ✈️ ATL</div>' +
+          '<div class="flight-route" style="font-size:14px;">' + (v.name ? v.name+' · ' : '') + 'ICN ✈️ ATL</div>' +
           '<span class="badge ' + st.cls + '">' + (isKo?st.ko:st.en) + '</span>' +
           '</div>' +
           '<div class="flight-detail">' + airlineDisplay(v.airline) + ' · ' + (v.flightDate||'') + '</div>' +
@@ -700,7 +720,7 @@ function loadDogs() {
         el.innerHTML = docs.map(function(doc) {
           var d = doc.data();
           var org = getOrgInfo(d.orgEmail) || { ico:'🏥', name:'기관', color:'#FFF5E6' };
-          return '<div class="dog-card"><div class="dog-emoji">🐶</div><div class="dog-info"><div class="dog-name">' + (d.name||'') + '</div><div class="dog-detail">' + org.ico + ' ' + org.name + ' · ⚖️ ' + (d.weight||'?') + 'kg · 📅 ' + (d.period||'') + '</div></div></div>';
+          return '<div class="dog-card"><div class="dog-emoji">🐶</div><div class="dog-info"><div class="dog-name">' + (d.name||'') + '</div><div class="dog-detail">' + org.ico + ' ' + org.name + ' · ⚖️ ' + (d.weight||'?') + 'kg · 📅 ' + (d.period||'') + (d.note ? '<br>📌 ' + d.note : '') + '</div></div></div>';
         }).join('');
       });
     });
@@ -784,7 +804,7 @@ function loadMyPage() {
         var dateStr = v.flightDate || '';
         return '<div class="flight-card">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-            '<div style="font-weight:800;">ICN ✈️ ATL</div>' +
+            '<div style="font-weight:800;">' + (v.name ? v.name+' · ' : '') + 'ICN ✈️ ATL</div>' +
             '<span class="badge ' + st.cls + '">' + (isKo ? st.ko : st.en) + '</span>' +
           '</div>' +
           '<div class="flight-detail">' +
@@ -959,12 +979,17 @@ function loadDashVols() {
         var phone   = v.phone || '';
         var stCls   = v.status === 'matched' ? 'badge-or' : 'badge-gy';
         var stTxt   = v.status === 'matched' ? (isKo?'연락완료':'Contacted') : (isKo?'대기중':'Pending');
+        // 다른 기관이 이미 연락완료 표시한 건인지 확인.
+        // 본인 기관이 아니면 "연락완료 취소" 버튼을 숨겨서, 타 기관의 연락 기록을
+        // 실수로 취소시키는 일이 없도록 한다. (대기중 상태는 누구나 처리 가능)
+        var isMatchedByOther = v.status === 'matched' && v.matchedOrgEmail && v.matchedOrgEmail !== orgEmail;
         return '<div class="card">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;">' +
           '<div style="font-weight:800;">' + (v.name ? '👤 '+v.name+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + '</div>' +
           '<span class="badge ' + stCls + '">' + stTxt + '</span>' +
           '</div>' +
           '<div style="font-size:13px;color:var(--t2);margin-top:6px;">📅 ' + (v.flightDate||'') + ' · ICN → ATL</div>' +
+          (isMatchedByOther ? '<div style="font-size:12px;color:var(--or);margin-top:4px;">' + (isKo?'⚠️ 다른 기관이 이미 연락완료 처리했습니다':'⚠️ Already marked contacted by another organization') + '</div>' : '') +
           '<div style="font-size:13px;margin-top:6px;color:var(--tx);">' +
           (kakaoId ? '💬 ' + kakaoId : '') + (kakaoId && phone ? ' · ' : '') + (phone ? '📞 ' + phone : '') + ((!kakaoId && !phone) ? '<span style="color:var(--t3);font-size:12px;">' + (isKo?'연락처 없음':'No contact info') + '</span>' : '') +
           '</div>' +
@@ -972,10 +997,11 @@ function loadDashVols() {
           (kakaoId ? '<button class="kakao-btn" style="flex:1;padding:10px;" onclick="copyKakao(\'' + kakaoId + '\')">💬 ' + (isKo?'카카오톡 ID 복사':'Copy KakaoTalk ID') + '</button>' : '') +
           (phone   ? '<a href="tel:' + phone + '" class="btn-sm btn-sm-or" style="flex:1;text-align:center;text-decoration:none;padding:10px;border-radius:10px;">📞 ' + (isKo?'전화 연결':'Call') + '</a>' : '') +
           '</div>' +
-          '<button class="btn-sm btn-sm-gr" style="width:100%;margin-top:8px;" onclick="markContacted(\'' + vid + '\',' + (v.status==='matched') + ')">' +
-          (v.status==='matched' ? (isKo?'✅ 연락완료 취소':'↩ Undo Contacted') : (isKo?'📱 연락완료 표시':'📱 Mark Contacted')) +
-          '</button>' +
-          (v.status==='matched' ?
+          (isMatchedByOther ? '' :
+            '<button class="btn-sm btn-sm-gr" style="width:100%;margin-top:8px;" onclick="markContacted(\'' + vid + '\',' + (v.status==='matched') + ',\'' + orgEmail + '\')">' +
+            (v.status==='matched' ? (isKo?'✅ 연락완료 취소':'↩ Undo Contacted') : (isKo?'📱 연락완료 표시':'📱 Mark Contacted')) +
+            '</button>') +
+          (v.status==='matched' && !isMatchedByOther ?
             '<button class="btn-pr" style="margin-top:8px;margin-bottom:0;" onclick="markDone(\'' + vid + '\')">' + (isKo?'🏁 이동완료 처리':'🏁 Mark as Done') + '</button>'
             : '') +
           '</div>';
@@ -996,8 +1022,10 @@ function loadDashVols() {
           var v = doc.data(); var vid = doc.id;
           var kakaoId = v.kakao || '';
           var phone   = v.phone || '';
+          var isMatchedByOther = v.status === 'matched' && v.matchedOrgEmail && v.matchedOrgEmail !== orgEmail;
           return '<div class="card">' +
             '<div style="font-weight:800;">' + (v.name ? '👤 '+v.name+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + ' · 📅 ' + (v.flightDate||'') + '</div>' +
+            (isMatchedByOther ? '<div style="font-size:12px;color:var(--or);margin-top:4px;">' + (isKo?'⚠️ 다른 기관이 이미 연락완료 처리했습니다':'⚠️ Already marked contacted by another organization') + '</div>' : '') +
             '<div style="font-size:13px;margin-top:6px;">' +
             (kakaoId?'💬 '+kakaoId:'') + (kakaoId&&phone?' · ':'') + (phone?'📞 '+phone:'') +
             '</div>' +
@@ -1005,27 +1033,41 @@ function loadDashVols() {
             (kakaoId?'<button class="kakao-btn" style="flex:1;padding:10px;" onclick="copyKakao(\''+kakaoId+'\')">💬 '+(isKo?'카카오 복사':'Copy')+'</button>':'') +
             (phone?'<a href="tel:'+phone+'" class="btn-sm btn-sm-or" style="flex:1;text-align:center;text-decoration:none;padding:10px;border-radius:10px;">📞 '+(isKo?'전화':'Call')+'</a>':'') +
             '</div>' +
-            '<button class="btn-sm btn-sm-gr" style="width:100%;margin-top:8px;" onclick="markContacted(\''+vid+'\',false)">'+(isKo?'📱 연락완료 표시':'📱 Mark Contacted')+'</button>' +
+            (isMatchedByOther ? '' : '<button class="btn-sm btn-sm-gr" style="width:100%;margin-top:8px;" onclick="markContacted(\''+vid+'\',false,\''+orgEmail+'\')">'+(isKo?'📱 연락완료 표시':'📱 Mark Contacted')+'</button>') +
             '</div>';
         }).join('');
       });
     });
 }
 
-function markContacted(vid, isAlreadyContacted) {
+function markContacted(vid, isAlreadyContacted, callerOrgEmail) {
   var isKo = curLang === 'ko';
   var user = auth.currentUser;
   if (!user) return;
-  var newStatus = isAlreadyContacted ? 'pending' : 'matched';
-  var updateData = { status: newStatus };
-  if (!isAlreadyContacted) {
-    // 연락완료 시 어느 기관이 연락했는지 기록
-    updateData.matchedOrgEmail = user.email;
-  } else {
-    // 연락완료 취소 시 기관 기록 제거
-    updateData.matchedOrgEmail = '';
+
+  // 취소(연락완료→대기중)인 경우, 실제로 이 건을 연락완료 처리한 기관이 본인인지
+  // Firestore에서 한 번 더 확인한다. 화면 버튼은 이미 타 기관 건이면 숨기지만,
+  // 혹시 화면이 갱신되지 않은 상태로 클릭되는 경우까지 방어하기 위한 이중 체크.
+  if (isAlreadyContacted) {
+    db.collection('volunteers').doc(vid).get().then(function(doc) {
+      if (!doc.exists) return;
+      var v = doc.data();
+      if (v.matchedOrgEmail && v.matchedOrgEmail !== user.email) {
+        alert(isKo
+          ? '다른 기관이 연락완료 처리한 봉사자입니다. 취소할 수 없습니다.'
+          : 'This volunteer was marked contacted by another organization. You cannot undo it.');
+        loadDashVols();
+        return;
+      }
+      db.collection('volunteers').doc(vid).update({ status: 'pending', matchedOrgEmail: '' })
+        .then(function() { loadDashVols(); })
+        .catch(function(e) { alert('오류: ' + e.message); });
+    });
+    return;
   }
-  db.collection('volunteers').doc(vid).update(updateData)
+
+  // 연락완료 표시 — 이 경우는 누구나(아직 아무도 연락 안 한 건이므로) 가능
+  db.collection('volunteers').doc(vid).update({ status: 'matched', matchedOrgEmail: user.email })
     .then(function() { loadDashVols(); })
     .catch(function(e) { alert('오류: ' + e.message); });
 }
@@ -1178,10 +1220,6 @@ function loadAdminDash() {
     var waiting = dogs.docs.filter(function(d) { return d.data().status === 'waiting'; }).length;
 
     // 통계는 아래 statsHtml에서 한번에 처리
-
-    // 기관별 완료 통계
-    var orgDone = {};
-    Object.keys(ORG_MAP).forEach(function(e) { orgDone[e] = 0; });
 
     // 강아지 기관별 집계
     // 기관명(name) 기준으로 집계해서, 구버전 이메일(LEGACY_ORG_MAP)로 등록된 강아지도
@@ -1382,11 +1420,15 @@ function closeExitPopup() {
   _exitPopupOpen = false;
 }
 function appExit() {
-  // 보안 정책상 스크립트로 브라우저/웹뷰를 강제 종료하는 것은 대부분 환경에서 차단된다.
-  // window.close()는 "사용자가 직접 연 탭"이 아니면 동작하지 않는 경우가 많으므로,
-  // 시도는 하되 실패하더라도 앱이 깨지지 않도록 팝업만 닫고 안전하게 머무른다.
+  // 모바일 브라우저(삼성 인터넷 등)는 스크립트로 탭/창을 닫는 것을 거의 항상 차단한다.
+  // window.close() 호출 자체가 일부 브라우저에서 페이지 상태를 불안정하게 만들어
+  // 의도와 다르게 화면이 바뀌는 부작용을 일으킬 수 있으므로, 호출하지 않는다.
+  //
+  // 대신, 팝업을 닫고 "종료해도 되는 화면"인 스플래시로 이동시킨다.
+  // showAppExitPopup()이 추가했던 히스토리 엔트리도 정리해서, 이후 뒤로가기를
+  // 다시 눌렀을 때 잔여 히스토리 때문에 동작이 어긋나는 일이 없게 한다.
   closeExitPopup();
-  try { window.close(); } catch (e) {}
+  scGo('s-splash');
 }
 
 // ══════════════════════════════════════
@@ -1405,37 +1447,48 @@ function appExit() {
 // 맨 위에 다시 덮어씌워지므로 동일한 원칙이 유지된다.
 // ══════════════════════════════════════
 window.addEventListener('popstate', function() {
-  // 가장 먼저 히스토리를 다시 채워서, 어떤 분기를 타든 "진짜 뒤로가기(이탈)"를 차단
+  // 가장 먼저 히스토리를 다시 채워서, 어떤 분기를 타든 "진짜 뒤로가기(이탈)"를 차단.
+  // 이 한 번의 pushState가 이번 뒤로가기에 대한 가드의 전부가 되어야 하므로,
+  // 아래에서 scGo/setTab을 호출할 때는 _fromPopstate 플래그로 추가 pushState를 막는다.
   history.pushState({ guard: true }, '', '');
+  _fromPopstate = true;
 
-  // ① 종료 확인 팝업이 떠 있으면: 팝업만 닫는다 (절대 종료하지 않음)
-  if (_exitPopupOpen) { closeExitPopup(); return; }
+  try {
+    // ① 종료 확인 팝업이 떠 있으면: 팝업만 닫는다 (절대 종료하지 않음)
+    if (_exitPopupOpen) { closeExitPopup(); return; }
 
-  // ② 개인정보 모달
-  var privacyModal = document.getElementById('privacy-modal');
-  if (privacyModal && privacyModal.style.display !== 'none') { closePrivacy(); return; }
+    // ② 개인정보 모달
+    var privacyModal = document.getElementById('privacy-modal');
+    if (privacyModal && privacyModal.style.display !== 'none') { closePrivacy(); return; }
 
-  // ③ 강아지 등록 모달
-  var dogModal = document.getElementById('dog-modal');
-  if (dogModal && dogModal.style.display !== 'none') { closeDogModal(); return; }
+    // ③ 강아지 등록 모달
+    var dogModal = document.getElementById('dog-modal');
+    if (dogModal && dogModal.style.display !== 'none') { closeDogModal(); return; }
 
-  // ④ 항공편 수정 모달
-  var flightModal = document.getElementById('flight-modal');
-  if (flightModal && flightModal.style.display !== 'none') { closeFlightModal(); return; }
+    // ④ 항공편 수정 모달
+    var flightModal = document.getElementById('flight-modal');
+    if (flightModal && flightModal.style.display !== 'none') { closeFlightModal(); return; }
 
-  // ⑤ 기관 대시보드 → 스플래시
-  if (_curScreen === 's-orgdash') { scGo('s-splash'); return; }
+    // ⑤ 기관 대시보드 — 봉사자 쪽과 동일하게, 다른 탭이면 먼저 "강아지" 탭으로
+    // 단계적으로 이동시키고, 강아지 탭에서 한 번 더 누르면 로그아웃(스플래시)한다.
+    if (_curScreen === 's-orgdash') {
+      if (_curDashTab !== 'dogs') { setDashTab('dogs'); return; }
+      scGo('s-splash'); return;
+    }
 
-  // ⑥ 로그인/온보딩/어드민 → 스플래시
-  if (['s-orglogin','s-vollogin','s-adminlogin','s-admindash','s-ob'].indexOf(_curScreen) > -1) {
-    scGo('s-splash'); return;
+    // ⑥ 로그인/온보딩/어드민 → 스플래시
+    if (['s-orglogin','s-vollogin','s-adminlogin','s-admindash','s-ob'].indexOf(_curScreen) > -1) {
+      scGo('s-splash'); return;
+    }
+
+    // ⑦ 메인 — 홈이 아닌 탭 → 홈
+    if (_curScreen === 's-main' && _curTab !== 'home') { setTab('home'); return; }
+
+    // ⑧ 메인 홈 또는 스플래시 화면 → 종료 확인 팝업 (여기서 절대 즉시 종료되지 않는다)
+    showAppExitPopup();
+  } finally {
+    _fromPopstate = false;
   }
-
-  // ⑦ 메인 — 홈이 아닌 탭 → 홈
-  if (_curScreen === 's-main' && _curTab !== 'home') { setTab('home'); return; }
-
-  // ⑧ 메인 홈 또는 스플래시 화면 → 종료 확인 팝업 (여기서 절대 즉시 종료되지 않는다)
-  showAppExitPopup();
 });
 
 // ══════════════════════════════════════
