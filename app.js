@@ -329,10 +329,14 @@ auth.onAuthStateChanged(function(user) {
 })();
 
 // ══════════════════════════════════════
-// 기관 로그인 이메일 자동완성 힌트
+// 기관 로그인 이메일 자동완성
 // ══════════════════════════════════════
 function loadOrgEmail() {
-  // 빈 상태 유지 (보안상 자동채우기 안 함)
+  var saved = localStorage.getItem('pawst_org_email');
+  if (saved) {
+    var el = document.getElementById('org-email');
+    if (el) el.value = saved;
+  }
 }
 function showOrgErr(msg) {
   var el = document.getElementById('org-err');
@@ -346,6 +350,16 @@ function doOrgLogin() {
   if (!email) { showOrgErr(isKo ? '이메일을 입력해 주세요.' : 'Please enter email.'); return; }
   if (!pw)    { showOrgErr(isKo ? '비밀번호를 입력해 주세요.' : 'Please enter password.'); return; }
   auth.signInWithEmailAndPassword(email, pw)
+    .then(function() {
+      // 봉사자 로그인과 동일하게, 체크되어 있으면 이메일만 저장(비밀번호는 절대 저장하지 않음)하고
+      // 체크 해제 상태면 이전에 저장된 이메일도 지운다.
+      var rememberEl = document.getElementById('org-remember');
+      if (rememberEl && rememberEl.checked) {
+        localStorage.setItem('pawst_org_email', email);
+      } else {
+        localStorage.removeItem('pawst_org_email');
+      }
+    })
     .catch(function() { showOrgErr(isKo ? '이메일 또는 비밀번호가 올바르지 않습니다.' : 'Incorrect email or password.'); });
 }
 function doOrgLogout() {
@@ -1135,15 +1149,33 @@ function loadDashDone() {
 
 function markDone(vid) {
   var isKo = curLang === 'ko';
+  var user = auth.currentUser;
+  if (!user) return;
   if (!confirm(isKo ? '이동완료로 처리할까요?\n봉사자의 이력에 기록됩니다.' : 'Mark as done?\nThis will be recorded in the volunteer\'s history.')) return;
-  db.collection('volunteers').doc(vid).update({
-    status: 'done',
-    doneAt: firebase.firestore.FieldValue.serverTimestamp()
-  }).then(function() {
-    alert(isKo ? '✅ 이동완료 처리되었습니다! 🎉\n봉사자 이력에 기록되었습니다.' : '✅ Marked as done! 🎉\nRecorded in volunteer history.');
-    loadDashVols();
-    loadDashDone();
-  }).catch(function(e) { alert('오류: ' + e.message); });
+
+  // markContacted()의 취소(연락완료 취소)에 적용했던 것과 동일한 이중 검증을
+  // 이동완료 처리에도 적용한다. 화면 버튼은 본인 기관이 연락완료한 건일 때만
+  // 보이도록 되어 있지만, 화면이 갱신되지 않은 상태로 클릭되는 경우까지 막기 위해
+  // Firestore에서 실제 matchedOrgEmail을 한 번 더 확인한다.
+  db.collection('volunteers').doc(vid).get().then(function(doc) {
+    if (!doc.exists) return;
+    var v = doc.data();
+    if (v.matchedOrgEmail && v.matchedOrgEmail !== user.email) {
+      alert(isKo
+        ? '다른 기관이 연락완료 처리한 봉사자입니다. 이동완료 처리할 수 없습니다.'
+        : 'This volunteer was marked contacted by another organization. You cannot mark it as done.');
+      loadDashVols();
+      return;
+    }
+    db.collection('volunteers').doc(vid).update({
+      status: 'done',
+      doneAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function() {
+      alert(isKo ? '✅ 이동완료 처리되었습니다! 🎉\n봉사자 이력에 기록되었습니다.' : '✅ Marked as done! 🎉\nRecorded in volunteer history.');
+      loadDashVols();
+      loadDashDone();
+    }).catch(function(e) { alert('오류: ' + e.message); });
+  });
 }
 
 function undoDone(vid) {
@@ -1209,6 +1241,7 @@ function doAdminLogout() {
   auth.signOut().then(function() { scGo('s-splash'); });
 }
 function loadAdminDash() {
+  var isKo = curLang === 'ko';
   Promise.all([
     db.collection('volunteers').get(),
     db.collection('dogs').get()
@@ -1272,7 +1305,7 @@ function loadAdminDash() {
 
     // 기관별 통계 렌더 — 합계가 "강아지 목록(전체 dogs.size)"과 항상 일치하도록
     // ORG_MAP 3개 기관 + 미분류(uncategorizedDogs)를 모두 더해서 보여준다.
-    var orgHtml = '<div class="sec-hd" style="margin-top:20px;">기관별 강아지 현황</div>';
+    var orgHtml = '<div class="sec-hd" style="margin-top:20px;">' + (isKo?'기관별 강아지 현황':'Dogs by Organization') + '</div>';
     orgHtml += Object.keys(ORG_MAP).map(function(email) {
       var org = ORG_MAP[email];
       var stat = orgDogs[email] || { waiting:0, total:0 };
@@ -1280,7 +1313,7 @@ function loadAdminDash() {
         '<div style="font-size:28px;">' + org.ico + '</div>' +
         '<div style="flex:1;">' +
           '<div style="font-weight:800;">' + org.name + '</div>' +
-          '<div style="font-size:12px;color:var(--t2);margin-top:4px;">대기 강아지 ' + stat.waiting + '마리 · 총 등록 ' + stat.total + '마리</div>' +
+          '<div style="font-size:12px;color:var(--t2);margin-top:4px;">' + (isKo? '대기 강아지 '+stat.waiting+'마리 · 총 등록 '+stat.total+'마리' : stat.waiting+' waiting · '+stat.total+' total') + '</div>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -1288,17 +1321,17 @@ function loadAdminDash() {
       orgHtml += '<div class="card" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;background:#FFF8F0;">' +
         '<div style="font-size:28px;">❓</div>' +
         '<div style="flex:1;">' +
-          '<div style="font-weight:800;">미분류 (등록되지 않은 기관 이메일)</div>' +
-          '<div style="font-size:12px;color:var(--t2);margin-top:4px;">대기 강아지 ' + uncategorizedDogs.waiting + '마리 · 총 등록 ' + uncategorizedDogs.total + '마리</div>' +
+          '<div style="font-weight:800;">' + (isKo?'미분류 (등록되지 않은 기관 이메일)':'Uncategorized (unregistered org email)') + '</div>' +
+          '<div style="font-size:12px;color:var(--t2);margin-top:4px;">' + (isKo? '대기 강아지 '+uncategorizedDogs.waiting+'마리 · 총 등록 '+uncategorizedDogs.total+'마리' : uncategorizedDogs.waiting+' waiting · '+uncategorizedDogs.total+' total') + '</div>' +
         '</div>' +
       '</div>';
     }
 
     // 월별 통계 렌더
     var months = Object.keys(monthlyDone).sort().reverse().slice(0,6);
-    var monthHtml = '<div class="sec-hd" style="margin-top:20px;">월별 이동완료</div>';
+    var monthHtml = '<div class="sec-hd" style="margin-top:20px;">' + (isKo?'월별 이동완료':'Monthly Completions') + '</div>';
     if (!months.length) {
-      monthHtml += '<div class="empty-state" style="padding:20px 0;"><div class="msg">아직 완료 기록이 없습니다.</div></div>';
+      monthHtml += '<div class="empty-state" style="padding:20px 0;"><div class="msg">' + (isKo?'아직 완료 기록이 없습니다.':'No completed transports yet.') + '</div></div>';
     } else {
       var maxVal = Math.max.apply(null, months.map(function(m) { return monthlyDone[m]; }));
       monthHtml += months.map(function(m) {
@@ -1307,7 +1340,7 @@ function loadAdminDash() {
         return '<div style="margin-bottom:10px;">' +
           '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">' +
             '<span style="font-weight:700;">' + m + '</span>' +
-            '<span style="color:var(--gr);font-weight:800;">' + cnt + '건</span>' +
+            '<span style="color:var(--gr);font-weight:800;">' + cnt + (isKo?'건':'') + '</span>' +
           '</div>' +
           '<div style="background:var(--bg);border-radius:6px;height:8px;">' +
             '<div style="background:var(--gr);border-radius:6px;height:8px;width:' + pct + '%;transition:width .4s;"></div>' +
@@ -1317,21 +1350,21 @@ function loadAdminDash() {
     }
 
     // 항공사별 통계 렌더
-    var airlineHtml = '<div class="sec-hd" style="margin-top:20px;">항공사별 봉사 신청</div>';
+    var airlineHtml = '<div class="sec-hd" style="margin-top:20px;">' + (isKo?'항공사별 봉사 신청':'Registrations by Airline') + '</div>';
     airlineHtml += Object.keys(airlineCnt).map(function(a) {
       var cnt = airlineCnt[a];
       return '<div class="card" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">' +
         '<div style="font-weight:700;">✈️ ' + a + '</div>' +
-        '<span class="badge badge-or">' + cnt + '건</span>' +
+        '<span class="badge badge-or">' + cnt + (isKo?'건':'') + '</span>' +
       '</div>';
     }).join('');
 
     // 봉사자 목록
-    var volListHtml = '<div class="sec-hd" style="margin-top:20px;">최근 봉사 신청 (최대 30건)</div>';
+    var volListHtml = '<div class="sec-hd" style="margin-top:20px;">' + (isKo?'최근 봉사 신청 (최대 30건)':'Recent Volunteers (max 30)') + '</div>';
     volListHtml += vols.docs.slice(0,30).map(function(doc) {
       var v = doc.data();
       var stMap = { pending:'badge-gy', matched:'badge-or', done:'badge-gr' };
-      var stTxt = { pending:'대기중', matched:'연락완료', done:'이동완료' };
+      var stTxt = isKo ? { pending:'대기중', matched:'연락완료', done:'이동완료' } : { pending:'Pending', matched:'Contacted', done:'Done' };
       return '<div class="card" style="margin-bottom:8px;">' +
         '<div style="display:flex;justify-content:space-between;">' +
           '<b>' + (v.name ? '👤 '+v.name+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + ' · ' + (v.flightDate||'') + '</b>' +
@@ -1345,14 +1378,14 @@ function loadAdminDash() {
     }).join('');
 
     // 강아지 목록
-    var dogListHtml = '<div class="sec-hd" style="margin-top:20px;">강아지 목록 (최대 30건)</div>';
+    var dogListHtml = '<div class="sec-hd" style="margin-top:20px;">' + (isKo?'강아지 목록 (최대 30건)':'Dog List (max 30)') + '</div>';
     dogListHtml += dogs.docs.slice(0,30).map(function(doc) {
       var d = doc.data();
       var org = getOrgInfo(d.orgEmail) || { name: d.orgEmail||'기관', ico:'🏥' };
       return '<div class="card" style="margin-bottom:8px;">' +
         '<div style="display:flex;justify-content:space-between;">' +
           '<b>🐶 ' + (d.name||'') + '</b>' +
-          '<span class="badge badge-gy">' + (d.status||'') + '</span>' +
+          '<span class="badge badge-gy">' + (isKo ? (d.status==='waiting'?'대기중':d.status==='done'?'이동완료':d.status||'') : (d.status||'')) + '</span>' +
         '</div>' +
         '<div style="font-size:12px;color:var(--t2);margin-top:4px;">' + org.ico + ' ' + org.name + (d.breed?' · '+d.breed:'') + (d.weight?' '+d.weight+'kg':'') + '</div>' +
       '</div>';
@@ -1360,10 +1393,10 @@ function loadAdminDash() {
 
     // 통계 HTML 먼저 구성 후 한번에 삽입
     var statsHtml = '<div class="admin-stat-row" id="admin-stats">' +
-      '<div class="admin-stat-box"><div class="admin-stat-n">' + vols.size + '</div><div class="admin-stat-l">전체 봉사 신청</div></div>' +
-      '<div class="admin-stat-box"><div class="admin-stat-n" style="color:var(--gr);">' + done + '</div><div class="admin-stat-l">✅ 이동완료</div></div>' +
-      '<div class="admin-stat-box"><div class="admin-stat-n" style="color:var(--or);">' + matched + '</div><div class="admin-stat-l">📱 연락완료</div></div>' +
-      '<div class="admin-stat-box"><div class="admin-stat-n">' + pending + '</div><div class="admin-stat-l">⏳ 대기중</div></div>' +
+      '<div class="admin-stat-box"><div class="admin-stat-n">' + vols.size + '</div><div class="admin-stat-l">' + (isKo?'전체 봉사 신청':'Total Registrations') + '</div></div>' +
+      '<div class="admin-stat-box"><div class="admin-stat-n" style="color:var(--gr);">' + done + '</div><div class="admin-stat-l">✅ ' + (isKo?'이동완료':'Done') + '</div></div>' +
+      '<div class="admin-stat-box"><div class="admin-stat-n" style="color:var(--or);">' + matched + '</div><div class="admin-stat-l">📱 ' + (isKo?'연락완료':'Contacted') + '</div></div>' +
+      '<div class="admin-stat-box"><div class="admin-stat-n">' + pending + '</div><div class="admin-stat-l">⏳ ' + (isKo?'대기중':'Pending') + '</div></div>' +
       '</div>';
 
     // id 기반으로 안전하게 삽입 (querySelector DOM 의존 제거)
@@ -1410,9 +1443,17 @@ function showAppExitPopup() {
     '<button class="exit-confirm" onclick="appExit()">' + (isKo?'종료':'Exit') + '</button>' +
     '</div></div>';
   document.body.appendChild(pop);
-  // 팝업이 떠 있는 상태를 히스토리에 한 칸 더 쌓아서, 팝업 위에서 뒤로가기 한 번 더 누르면
-  // (브라우저가 진짜로 이탈하기 전에) 이 이벤트를 우리가 먼저 가로채 팝업만 닫도록 한다.
-  history.pushState({ popup: 'exit' }, '', '');
+  // 주의: 여기서 history.pushState를 호출하지 않는다.
+  // showAppExitPopup()은 항상 popstate 핸들러 안에서만 호출되는데, 그 핸들러는
+  // 진입 시 이미 history.pushState({guard:true})를 한 번 호출해 가드를 채워둔 상태다.
+  // 만약 여기서 pushState를 또 호출하면, "뒤로가기 1번 = 히스토리 2칸 소비"가 되어
+  // 종료 팝업이 떠 있는 상태에서 한 번 더 뒤로가기를 눌렀을 때 가드가 정상 동작하기 전에
+  // 실제 히스토리가 먼저 바닥나면서 confirm 절차 없이 앱이 이탈/종료되는 버그가 발생한다.
+  if (!_fromPopstate) {
+    // 만약(이론상) 다른 경로에서 직접 호출되는 경우를 대비한 안전장치 — 정상 흐름에서는 항상
+    // _fromPopstate가 true이므로 이 분기는 실행되지 않는다.
+    history.pushState({ popup: 'exit' }, '', '');
+  }
 }
 function closeExitPopup() {
   var el = document.getElementById('app-exit-popup');
