@@ -389,14 +389,21 @@ body {
   padding: 5px 10px; font-size: 12px; font-weight: 700;
   cursor: pointer; z-index: 10;
 }
-/* 탭 콘텐츠 내부 상단에 띄우는 작은 언어 토글 (8-A-04 피드백 반영) */
+/* 탭 콘텐츠 내부 상단에 띄우는 작은 언어 토글 (8-A-04 피드백 반영)
+   주의: 이 버튼은 absolute로 떠 있고 바로 아래 sec-hd 제목과 같은 줄 높이에서
+   시작하기 때문에, 영어 모드처럼 제목이 길어지는 경우 겹칠 수 있다.
+   이를 막기 위해 (1) 버튼을 패딩 영역 안쪽 더 위로 당기고,
+   (2) 버튼을 사용하는 탭의 첫 sec-hd에는 별도로 우측 여백을 준다(.has-lang-toggle 참고). */
 .lang-toggle-tab {
-  position: absolute; top: 14px; right: 0;
+  position: absolute; top: 16px; right: 16px;
   background: #fff; color: var(--t2);
   border: 1px solid var(--bd); border-radius: 8px;
-  padding: 4px 9px; font-size: 11px; font-weight: 700;
+  padding: 3px 8px; font-size: 10px; font-weight: 700;
   cursor: pointer; z-index: 5;
 }
+/* lang-toggle-tab과 같은 줄에 위치하는 sec-hd는 토글 버튼 너비만큼 오른쪽을 비워서
+   영어 모드에서 제목이 길어져도 겹치지 않게 한다. */
+.sec-hd.has-lang-toggle { padding-right: 56px; }
 
 /* ════════════════════════════════════
    구글 로그인 버튼

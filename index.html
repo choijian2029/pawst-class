@@ -204,7 +204,7 @@
   <!-- 항공편 등록 탭 -->
   <div id="t-register" style="display:none;flex:1;overflow-y:auto;padding:16px 16px 90px;position:relative;">
     <div class="lang-toggle-tab" onclick="togLang()">ENG</div>
-    <div class="sec-hd" data-ko="✈️ 항공편 등록" data-en="✈️ Register Flight">✈️ 항공편 등록</div>
+    <div class="sec-hd has-lang-toggle" data-ko="✈️ 항공편 등록" data-en="✈️ Register Flight">✈️ 항공편 등록</div>
     <div class="sec-sub" data-ko="인천(ICN) → 애틀란타(ATL) 노선 봉사자 정보를 등록해주세요. 등록 후 파트너 기관에서 카카오톡으로 직접 연락드립니다." data-en="Register your ICN → ATL flight info. Partner organizations will contact you via KakaoTalk.">인천(ICN) → 애틀란타(ATL) 노선 봉사자 정보를 등록해주세요. 등록 후 파트너 기관에서 카카오톡으로 직접 연락드립니다.</div>
 
     <!-- 이미 등록된 항공편 -->
@@ -245,7 +245,7 @@
   <!-- 강아지 탭 -->
   <div id="t-dogs" style="display:none;flex:1;overflow-y:auto;padding:16px 16px 90px;position:relative;">
     <div class="lang-toggle-tab" onclick="togLang()">ENG</div>
-    <div class="sec-hd" data-ko="🐾 이동 대기 강아지" data-en="🐾 Dogs Waiting">🐾 이동 대기 강아지</div>
+    <div class="sec-hd has-lang-toggle" data-ko="🐾 이동 대기 강아지" data-en="🐾 Dogs Waiting">🐾 이동 대기 강아지</div>
     <div class="sec-sub" data-ko="파트너 기관의 이동봉사 대기 강아지 목록입니다. 항공편을 등록하면 기관에서 연락드려요." data-en="Dogs waiting for transport from our partner organizations. Register your flight and they'll reach out.">파트너 기관의 이동봉사 대기 강아지 목록입니다. 항공편을 등록하면 기관에서 연락드려요.</div>
     <!-- 기관 필터 -->
     <div class="chip-row" id="dogs-filter">
@@ -260,7 +260,7 @@
   <!-- 마이페이지 탭 -->
   <div id="t-mypage" style="display:none;flex:1;overflow-y:auto;padding:16px 16px 90px;position:relative;">
     <div class="lang-toggle-tab" onclick="togLang()">ENG</div>
-    <div class="sec-hd" data-ko="👤 마이페이지" data-en="👤 My Page">👤 마이페이지</div>
+    <div class="sec-hd has-lang-toggle" data-ko="👤 마이페이지" data-en="👤 My Page">👤 마이페이지</div>
     <div id="mypage-content"></div>
   </div>
 
@@ -353,7 +353,10 @@
 <div class="sc" id="s-admindash">
   <div class="top-hd">
     <div class="top-hd-title">⚙️ Admin Dashboard</div>
-    <button class="btn-sm btn-sm-or" onclick="doAdminLogout()">로그아웃</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div class="lang-toggle-tab" style="position:static;" onclick="togLang()">ENG</div>
+      <button class="btn-sm btn-sm-or" onclick="doAdminLogout()" data-ko="로그아웃" data-en="Logout">로그아웃</button>
+    </div>
   </div>
   <div id="admin-dash-body" style="flex:1;overflow-y:auto;padding:16px 16px 30px;">
     <div class="admin-stat-row" id="admin-stats"></div>
