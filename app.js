@@ -64,6 +64,11 @@ function applyLang() {
     var txt = curLang === 'ko' ? el.getAttribute('data-ko') : el.getAttribute('data-en');
     if (txt) el.innerHTML = txt;
   });
+  // input의 placeholder는 innerHTML로 바뀌지 않으므로 별도 속성(data-ko-ph/data-en-ph)으로 처리
+  document.querySelectorAll('[data-ko-ph]').forEach(function(el) {
+    var ph = curLang === 'ko' ? el.getAttribute('data-ko-ph') : el.getAttribute('data-en-ph');
+    if (ph) el.setAttribute('placeholder', ph);
+  });
 }
 
 // ══════════════════════════════════════
@@ -381,12 +386,36 @@ function selEditAirline(btn, name) {
 }
 
 // ══════════════════════════════════════
+// 국적 / 체류자격 select - "기타" 선택시 직접입력 칸 노출
+// ══════════════════════════════════════
+function toggleOtherInput(selectId, otherInputId) {
+  var sel = document.getElementById(selectId);
+  var other = document.getElementById(otherInputId);
+  if (!sel || !other) return;
+  if (sel.value === '기타') {
+    other.style.display = 'block';
+  } else {
+    other.style.display = 'none';
+    other.value = '';
+  }
+}
+
+// ══════════════════════════════════════
 // 항공편 등록
 // ══════════════════════════════════════
 function doRegister() {
   var isKo  = curLang === 'ko';
-  var name  = (document.getElementById('reg-name').value || '').trim();
+  var nameKo = (document.getElementById('reg-name-ko').value || '').trim();
+  var nameEn = (document.getElementById('reg-name-en').value || '').trim();
   var date  = document.getElementById('reg-date').value;
+  var bookingRef = (document.getElementById('reg-booking-ref').value || '').trim();
+  var usAddress  = (document.getElementById('reg-us-address').value || '').trim();
+  var nationalitySel = document.getElementById('reg-nationality').value;
+  var nationalityOther = (document.getElementById('reg-nationality-other').value || '').trim();
+  var nationality = nationalitySel === '기타' ? nationalityOther : nationalitySel;
+  var residencySel = document.getElementById('reg-residency').value;
+  var residencyOther = (document.getElementById('reg-residency-other').value || '').trim();
+  var residency = residencySel === '기타' ? residencyOther : residencySel;
   var kakao = (document.getElementById('reg-kakao').value || '').trim();
   var phone = (document.getElementById('reg-phone').value || '').trim();
   var err   = document.getElementById('reg-err');
@@ -394,8 +423,12 @@ function doRegister() {
 
   var user = auth.currentUser;
   if (!user) { scGo('s-vollogin'); return; }
-  if (!name) {
-    err.textContent = isKo ? '이름 또는 닉네임을 입력해 주세요.' : 'Please enter your name or nickname.';
+  if (!nameKo) {
+    err.textContent = isKo ? '한국 이름을 입력해 주세요.' : 'Please enter your Korean name.';
+    err.style.display = 'block'; return;
+  }
+  if (!nameEn) {
+    err.textContent = isKo ? '영문 이름을 입력해 주세요.' : 'Please enter your English name.';
     err.style.display = 'block'; return;
   }
   if (!_selAirline) {
@@ -410,6 +443,30 @@ function doRegister() {
     err.textContent = isKo ? '출발 날짜는 오늘 이후여야 합니다.' : 'Date must be today or later.';
     err.style.display = 'block'; return;
   }
+  if (!bookingRef) {
+    err.textContent = isKo ? '항공권 예약번호를 입력해 주세요.' : 'Please enter your booking reference.';
+    err.style.display = 'block'; return;
+  }
+  if (!usAddress) {
+    err.textContent = isKo ? '미국 내 주소를 입력해 주세요.' : 'Please enter your US address.';
+    err.style.display = 'block'; return;
+  }
+  if (!nationalitySel) {
+    err.textContent = isKo ? '국적을 선택해 주세요.' : 'Please select your nationality.';
+    err.style.display = 'block'; return;
+  }
+  if (nationalitySel === '기타' && !nationalityOther) {
+    err.textContent = isKo ? '국적을 직접 입력해 주세요.' : 'Please specify your nationality.';
+    err.style.display = 'block'; return;
+  }
+  if (!residencySel) {
+    err.textContent = isKo ? '체류 자격을 선택해 주세요.' : 'Please select your residency status.';
+    err.style.display = 'block'; return;
+  }
+  if (residencySel === '기타' && !residencyOther) {
+    err.textContent = isKo ? '체류 자격을 직접 입력해 주세요.' : 'Please specify your residency status.';
+    err.style.display = 'block'; return;
+  }
   if (!kakao && !phone) {
     err.textContent = isKo ? '카카오톡 ID 또는 전화번호 중 하나는 입력해 주세요.' : 'Please enter KakaoTalk ID or phone number.';
     err.style.display = 'block'; return;
@@ -421,20 +478,35 @@ function doRegister() {
   }
 
   db.collection('volunteers').add({
-    name:       name,
-    email:      user.email,
-    airline:    _selAirline,
-    flightDate: date,
-    kakao:      kakao,
-    phone:      phone,
-    status:     'pending',
-    createdAt:  firebase.firestore.FieldValue.serverTimestamp()
+    nameKo:      nameKo,
+    nameEn:      nameEn,
+    name:        nameKo, // 구버전 화면(기존 v.name 참조 코드) 호환을 위해 한국 이름을 그대로도 저장
+    email:       user.email,
+    airline:     _selAirline,
+    flightDate:  date,
+    bookingRef:  bookingRef,
+    usAddress:   usAddress,
+    nationality: nationality,
+    residencyStatus: residency,
+    kakao:       kakao,
+    phone:       phone,
+    status:      'pending',
+    createdAt:   firebase.firestore.FieldValue.serverTimestamp()
   }).then(function() {
     alert(isKo
       ? '✅ 항공편이 등록되었습니다!\n파트너 기관에서 카카오톡 또는 전화로 연락드릴 예정입니다.'
       : '✅ Flight registered!\nPartner organizations will contact you via KakaoTalk or phone.');
-    document.getElementById('reg-name').value = '';
+    document.getElementById('reg-name-ko').value = '';
+    document.getElementById('reg-name-en').value = '';
     document.getElementById('reg-date').value = '';
+    document.getElementById('reg-booking-ref').value = '';
+    document.getElementById('reg-us-address').value = '';
+    document.getElementById('reg-nationality').value = '';
+    document.getElementById('reg-nationality-other').value = '';
+    document.getElementById('reg-nationality-other').style.display = 'none';
+    document.getElementById('reg-residency').value = '';
+    document.getElementById('reg-residency-other').value = '';
+    document.getElementById('reg-residency-other').style.display = 'none';
     document.getElementById('reg-kakao').value = '';
     document.getElementById('reg-phone').value = '';
     _selAirline = '';
@@ -523,10 +595,32 @@ function openFlightModal(vid) {
     if (!doc.exists) return;
     var v = doc.data();
     document.getElementById('flight-edit-id').value = vid;
-    document.getElementById('edit-name').value  = v.name || '';
+    document.getElementById('edit-name-ko').value = v.nameKo || v.name || '';
+    document.getElementById('edit-name-en').value = v.nameEn || '';
     document.getElementById('edit-date').value  = v.flightDate || '';
+    document.getElementById('edit-booking-ref').value = v.bookingRef || '';
+    document.getElementById('edit-us-address').value  = v.usAddress || '';
     document.getElementById('edit-kakao').value = v.kakao || '';
     document.getElementById('edit-phone').value = v.phone || '';
+
+    // 국적: 미리 정의된 옵션(대한민국/미국)에 해당하면 그 옵션을 선택하고,
+    // 그 외 값이면 "기타"를 선택한 뒤 직접입력 칸에 채워서 기존 데이터도 그대로 보존되게 한다.
+    var natSel = document.getElementById('edit-nationality');
+    var natOther = document.getElementById('edit-nationality-other');
+    var savedNat = v.nationality || '';
+    var natPredefined = ['대한민국','미국'].indexOf(savedNat) > -1;
+    natSel.value = savedNat === '' ? '' : (natPredefined ? savedNat : '기타');
+    natOther.value = natPredefined ? '' : savedNat;
+    natOther.style.display = (!natPredefined && savedNat !== '') ? 'block' : 'none';
+
+    var resSel = document.getElementById('edit-residency');
+    var resOther = document.getElementById('edit-residency-other');
+    var savedRes = v.residencyStatus || '';
+    var resPredefined = ['시민권자','영주권자','유학생비자','취업비자'].indexOf(savedRes) > -1;
+    resSel.value = savedRes === '' ? '' : (resPredefined ? savedRes : '기타');
+    resOther.value = resPredefined ? '' : savedRes;
+    resOther.style.display = (!resPredefined && savedRes !== '') ? 'block' : 'none';
+
     _editAirline = v.airline || '';
     // 언어 무관하게 onclick 속성의 값으로 매칭 (data-en/ko 변경에 영향 없음)
     document.querySelectorAll('#edit-airline-chips .chip').forEach(function(c) {
@@ -545,12 +639,24 @@ function closeFlightModal() {
 function saveEditFlight() {
   var vid   = document.getElementById('flight-edit-id').value;
   var isKo  = curLang === 'ko';
-  var name  = (document.getElementById('edit-name').value || '').trim();
+  var nameKo = (document.getElementById('edit-name-ko').value || '').trim();
+  var nameEn = (document.getElementById('edit-name-en').value || '').trim();
   var date  = document.getElementById('edit-date').value;
+  var bookingRef = (document.getElementById('edit-booking-ref').value || '').trim();
+  var usAddress  = (document.getElementById('edit-us-address').value || '').trim();
+  var nationalitySel = document.getElementById('edit-nationality').value;
+  var nationalityOther = (document.getElementById('edit-nationality-other').value || '').trim();
+  var nationality = nationalitySel === '기타' ? nationalityOther : nationalitySel;
+  var residencySel = document.getElementById('edit-residency').value;
+  var residencyOther = (document.getElementById('edit-residency-other').value || '').trim();
+  var residency = residencySel === '기타' ? residencyOther : residencySel;
   var kakao = (document.getElementById('edit-kakao').value || '').trim();
   var phone = (document.getElementById('edit-phone').value || '').trim();
-  if (!name) {
-    alert(isKo ? '이름 또는 닉네임을 입력해 주세요.' : 'Please enter your name or nickname.'); return;
+  if (!nameKo) {
+    alert(isKo ? '한국 이름을 입력해 주세요.' : 'Please enter your Korean name.'); return;
+  }
+  if (!nameEn) {
+    alert(isKo ? '영문 이름을 입력해 주세요.' : 'Please enter your English name.'); return;
   }
   if (!_editAirline) {
     alert(isKo ? '항공사를 선택해 주세요.' : 'Please select an airline.'); return;
@@ -558,15 +664,39 @@ function saveEditFlight() {
   if (date && date < new Date().toISOString().slice(0,10)) {
     alert(isKo ? '출발 날짜는 오늘 이후여야 합니다.' : 'Date must be today or later.'); return;
   }
+  if (!bookingRef) {
+    alert(isKo ? '항공권 예약번호를 입력해 주세요.' : 'Please enter your booking reference.'); return;
+  }
+  if (!usAddress) {
+    alert(isKo ? '미국 내 주소를 입력해 주세요.' : 'Please enter your US address.'); return;
+  }
+  if (!nationalitySel) {
+    alert(isKo ? '국적을 선택해 주세요.' : 'Please select your nationality.'); return;
+  }
+  if (nationalitySel === '기타' && !nationalityOther) {
+    alert(isKo ? '국적을 직접 입력해 주세요.' : 'Please specify your nationality.'); return;
+  }
+  if (!residencySel) {
+    alert(isKo ? '체류 자격을 선택해 주세요.' : 'Please select your residency status.'); return;
+  }
+  if (residencySel === '기타' && !residencyOther) {
+    alert(isKo ? '체류 자격을 직접 입력해 주세요.' : 'Please specify your residency status.'); return;
+  }
   if (!kakao && !phone) {
     alert(isKo ? '카카오톡 ID 또는 전화번호를 입력해 주세요.' : 'Enter KakaoTalk ID or phone.'); return;
   }
   db.collection('volunteers').doc(vid).update({
-    name:       name,
-    airline:    _editAirline,
-    flightDate: date,
-    kakao:      kakao,
-    phone:      phone
+    nameKo:      nameKo,
+    nameEn:      nameEn,
+    name:        nameKo, // 구버전 화면 호환
+    airline:     _editAirline,
+    flightDate:  date,
+    bookingRef:  bookingRef,
+    usAddress:   usAddress,
+    nationality: nationality,
+    residencyStatus: residency,
+    kakao:       kakao,
+    phone:       phone
   }).then(function() {
     closeFlightModal();
     loadMyFlights();
@@ -997,12 +1127,17 @@ function loadDashVols() {
         // 본인 기관이 아니면 "연락완료 취소" 버튼을 숨겨서, 타 기관의 연락 기록을
         // 실수로 취소시키는 일이 없도록 한다. (대기중 상태는 누구나 처리 가능)
         var isMatchedByOther = v.status === 'matched' && v.matchedOrgEmail && v.matchedOrgEmail !== orgEmail;
+        var nameKo = v.nameKo || v.name || '';
         return '<div class="card">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-          '<div style="font-weight:800;">' + (v.name ? '👤 '+v.name+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + '</div>' +
+          '<div style="font-weight:800;">' + (nameKo ? '👤 '+nameKo+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + '</div>' +
           '<span class="badge ' + stCls + '">' + stTxt + '</span>' +
           '</div>' +
           '<div style="font-size:13px;color:var(--t2);margin-top:6px;">📅 ' + (v.flightDate||'') + ' · ICN → ATL</div>' +
+          (v.nameEn ? '<div style="font-size:12px;color:var(--t2);margin-top:4px;">🪪 ' + v.nameEn + '</div>' : '') +
+          (v.bookingRef ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;">🎫 ' + (isKo?'예약번호 ':'Booking ') + v.bookingRef + '</div>' : '') +
+          (v.nationality || v.residencyStatus ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;">🌐 ' + [v.nationality, v.residencyStatus].filter(Boolean).join(' · ') + '</div>' : '') +
+          (v.usAddress ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;">🏠 ' + v.usAddress + '</div>' : '') +
           (isMatchedByOther ? '<div style="font-size:12px;color:var(--or);margin-top:4px;">' + (isKo?'⚠️ 다른 기관이 이미 연락완료 처리했습니다':'⚠️ Already marked contacted by another organization') + '</div>' : '') +
           '<div style="font-size:13px;margin-top:6px;color:var(--tx);">' +
           (kakaoId ? '💬 ' + kakaoId : '') + (kakaoId && phone ? ' · ' : '') + (phone ? '📞 ' + phone : '') + ((!kakaoId && !phone) ? '<span style="color:var(--t3);font-size:12px;">' + (isKo?'연락처 없음':'No contact info') + '</span>' : '') +
@@ -1037,8 +1172,13 @@ function loadDashVols() {
           var kakaoId = v.kakao || '';
           var phone   = v.phone || '';
           var isMatchedByOther = v.status === 'matched' && v.matchedOrgEmail && v.matchedOrgEmail !== orgEmail;
+          var nameKo = v.nameKo || v.name || '';
           return '<div class="card">' +
-            '<div style="font-weight:800;">' + (v.name ? '👤 '+v.name+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + ' · 📅 ' + (v.flightDate||'') + '</div>' +
+            '<div style="font-weight:800;">' + (nameKo ? '👤 '+nameKo+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + ' · 📅 ' + (v.flightDate||'') + '</div>' +
+            (v.nameEn ? '<div style="font-size:12px;color:var(--t2);margin-top:4px;">🪪 ' + v.nameEn + '</div>' : '') +
+            (v.bookingRef ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;">🎫 ' + (isKo?'예약번호 ':'Booking ') + v.bookingRef + '</div>' : '') +
+            (v.nationality || v.residencyStatus ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;">🌐 ' + [v.nationality, v.residencyStatus].filter(Boolean).join(' · ') + '</div>' : '') +
+            (v.usAddress ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;">🏠 ' + v.usAddress + '</div>' : '') +
             (isMatchedByOther ? '<div style="font-size:12px;color:var(--or);margin-top:4px;">' + (isKo?'⚠️ 다른 기관이 이미 연락완료 처리했습니다':'⚠️ Already marked contacted by another organization') + '</div>' : '') +
             '<div style="font-size:13px;margin-top:6px;">' +
             (kakaoId?'💬 '+kakaoId:'') + (kakaoId&&phone?' · ':'') + (phone?'📞 '+phone:'') +
@@ -1127,12 +1267,17 @@ function loadDashDone() {
         var doneDate = '';
         try { doneDate = v.doneAt ? new Date(v.doneAt.toDate()).toLocaleDateString('ko-KR') : ''; }
         catch(e) { doneDate = ''; }
+        var nameKo = v.nameKo || v.name || '';
         return '<div class="card">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-            '<div style="font-weight:800;">' + (v.name ? '👤 '+v.name+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + '</div>' +
+            '<div style="font-weight:800;">' + (nameKo ? '👤 '+nameKo+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + '</div>' +
             '<span class="badge badge-gr">' + (isKo?'이동완료':'Done') + '</span>' +
           '</div>' +
           '<div style="font-size:13px;color:var(--t2);margin-top:6px;">📅 ' + (v.flightDate||'') + ' · ICN → ATL</div>' +
+          (v.nameEn ? '<div style="font-size:12px;color:var(--t2);margin-top:4px;">🪪 ' + v.nameEn + '</div>' : '') +
+          (v.bookingRef ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;">🎫 ' + (isKo?'예약번호 ':'Booking ') + v.bookingRef + '</div>' : '') +
+          (v.nationality || v.residencyStatus ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;">🌐 ' + [v.nationality, v.residencyStatus].filter(Boolean).join(' · ') + '</div>' : '') +
+          (v.usAddress ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;">🏠 ' + v.usAddress + '</div>' : '') +
           '<div style="font-size:13px;margin-top:4px;color:var(--t2);">' +
             (v.kakao?'💬 '+v.kakao:'') + (v.kakao&&v.phone?' · ':'') + (v.phone?'📞 '+v.phone:'') +
           '</div>' +
@@ -1365,11 +1510,14 @@ function loadAdminDash() {
       var v = doc.data();
       var stMap = { pending:'badge-gy', matched:'badge-or', done:'badge-gr' };
       var stTxt = isKo ? { pending:'대기중', matched:'연락완료', done:'이동완료' } : { pending:'Pending', matched:'Contacted', done:'Done' };
+      var nameKo = v.nameKo || v.name || '';
       return '<div class="card" style="margin-bottom:8px;">' +
         '<div style="display:flex;justify-content:space-between;">' +
-          '<b>' + (v.name ? '👤 '+v.name+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + ' · ' + (v.flightDate||'') + '</b>' +
+          '<b>' + (nameKo ? '👤 '+nameKo+' · ' : '') + '✈️ ' + airlineDisplay(v.airline) + ' · ' + (v.flightDate||'') + '</b>' +
           '<span class="badge ' + (stMap[v.status]||'badge-gy') + '">' + (stTxt[v.status]||v.status||'') + '</span>' +
         '</div>' +
+        (v.nameEn || v.nationality || v.residencyStatus ?
+          '<div style="font-size:11px;color:var(--t3);margin-top:2px;">' + [v.nameEn, v.nationality, v.residencyStatus].filter(Boolean).join(' · ') + '</div>' : '') +
         '<div style="font-size:12px;color:var(--t2);margin-top:4px;">' +
           (v.kakao?'💬 '+v.kakao:'') + (v.kakao&&v.phone?' · ':'') + (v.phone?'📞 '+v.phone:'') +
           '<br>' + (v.email||'') +

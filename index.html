@@ -216,8 +216,10 @@
     <!-- 등록 폼 -->
     <div id="reg-form">
       <div id="reg-err" class="err-msg"></div>
-      <label class="fi-label" data-ko="이름 / 닉네임" data-en="Name / Nickname">이름 / 닉네임</label>
-      <input class="fi" id="reg-name" placeholder="예: 최지안">
+      <label class="fi-label" data-ko="한국 이름" data-en="Korean Name">한국 이름</label>
+      <input class="fi" id="reg-name-ko" placeholder="예: 최지안">
+      <label class="fi-label" data-ko="영문 이름 (여권 영문명)" data-en="English Name (as on passport)">영문 이름 (여권 영문명)</label>
+      <input class="fi" id="reg-name-en" placeholder="예: CHOI JIAN" autocomplete="off">
       <label class="fi-label" data-ko="항공사" data-en="Airline">항공사</label>
       <div class="chip-row" id="reg-airline-chips">
         <button class="chip" onclick="selAirline(this,'대한항공')" data-ko="대한항공 KE" data-en="Korean Air KE">대한항공 KE</button>
@@ -226,6 +228,28 @@
       </div>
       <label class="fi-label" data-ko="출발 날짜" data-en="Departure Date">출발 날짜</label>
       <input class="fi" id="reg-date" type="date">
+      <label class="fi-label" data-ko="항공권 예약번호 (E-ticket / PNR)" data-en="Booking Reference (E-ticket / PNR)">항공권 예약번호 (E-ticket / PNR)</label>
+      <input class="fi" id="reg-booking-ref" placeholder="예: ABCD12" autocomplete="off">
+      <label class="fi-label" data-ko="미국 내 주소 (도착 후 머무는 곳)" data-en="US Address (where you'll be staying)">미국 내 주소 (도착 후 머무는 곳)</label>
+      <input class="fi" id="reg-us-address" placeholder="예: 123 Main St, Atlanta, GA 30301" autocomplete="off">
+      <label class="fi-label" data-ko="국적" data-en="Nationality">국적</label>
+      <select class="fi" id="reg-nationality" onchange="toggleOtherInput('reg-nationality','reg-nationality-other')">
+        <option value="" data-ko="-- 선택 --" data-en="-- Select --">-- 선택 --</option>
+        <option value="대한민국" data-ko="대한민국" data-en="South Korea">대한민국</option>
+        <option value="미국" data-ko="미국" data-en="United States">미국</option>
+        <option value="기타" data-ko="기타 (직접입력)" data-en="Other (please specify)">기타 (직접입력)</option>
+      </select>
+      <input class="fi" id="reg-nationality-other" style="display:none;margin-top:8px;" placeholder="국적을 입력해 주세요" data-ko-ph="국적을 입력해 주세요" data-en-ph="Please enter nationality">
+      <label class="fi-label" data-ko="체류 자격" data-en="Residency Status">체류 자격</label>
+      <select class="fi" id="reg-residency" onchange="toggleOtherInput('reg-residency','reg-residency-other')">
+        <option value="" data-ko="-- 선택 --" data-en="-- Select --">-- 선택 --</option>
+        <option value="시민권자" data-ko="시민권자" data-en="Citizen">시민권자</option>
+        <option value="영주권자" data-ko="영주권자" data-en="Permanent Resident">영주권자</option>
+        <option value="유학생비자" data-ko="유학생비자 (F-1 등)" data-en="Student Visa (F-1, etc.)">유학생비자 (F-1 등)</option>
+        <option value="취업비자" data-ko="취업비자 (H-1B 등)" data-en="Work Visa (H-1B, etc.)">취업비자 (H-1B 등)</option>
+        <option value="기타" data-ko="기타 (직접입력)" data-en="Other (please specify)">기타 (직접입력)</option>
+      </select>
+      <input class="fi" id="reg-residency-other" style="display:none;margin-top:8px;" placeholder="체류 자격을 입력해 주세요" data-ko-ph="체류 자격을 입력해 주세요" data-en-ph="Please enter residency status">
       <label class="fi-label" data-ko="카카오톡 ID" data-en="KakaoTalk ID">카카오톡 ID</label>
       <input class="fi" id="reg-kakao" placeholder="예: jiancat" autocomplete="off">
       <label class="fi-label" data-ko="전화번호 (선택)" data-en="Phone Number (optional)">전화번호 (선택)</label>
@@ -426,8 +450,10 @@
     <div class="modal-handle"></div>
     <div class="modal-title" data-ko="항공편 수정" data-en="Edit Flight">항공편 수정</div>
     <input type="hidden" id="flight-edit-id">
-    <label class="fi-label" data-ko="이름 / 닉네임" data-en="Name / Nickname">이름 / 닉네임</label>
-    <input class="fi" id="edit-name" placeholder="예: 최지안">
+    <label class="fi-label" data-ko="한국 이름" data-en="Korean Name">한국 이름</label>
+    <input class="fi" id="edit-name-ko" placeholder="예: 최지안">
+    <label class="fi-label" data-ko="영문 이름 (여권 영문명)" data-en="English Name (as on passport)">영문 이름 (여권 영문명)</label>
+    <input class="fi" id="edit-name-en" placeholder="예: CHOI JIAN">
     <label class="fi-label" data-ko="항공사" data-en="Airline">항공사</label>
     <div class="chip-row" id="edit-airline-chips">
       <button class="chip" onclick="selEditAirline(this,'대한항공')" data-ko="대한항공 KE" data-en="Korean Air KE">대한항공 KE</button>
@@ -436,6 +462,28 @@
     </div>
     <label class="fi-label" data-ko="출발 날짜" data-en="Departure Date">출발 날짜</label>
     <input class="fi" id="edit-date" type="date">
+    <label class="fi-label" data-ko="항공권 예약번호 (E-ticket / PNR)" data-en="Booking Reference (E-ticket / PNR)">항공권 예약번호 (E-ticket / PNR)</label>
+    <input class="fi" id="edit-booking-ref" placeholder="예: ABCD12">
+    <label class="fi-label" data-ko="미국 내 주소 (도착 후 머무는 곳)" data-en="US Address (where you'll be staying)">미국 내 주소 (도착 후 머무는 곳)</label>
+    <input class="fi" id="edit-us-address" placeholder="예: 123 Main St, Atlanta, GA 30301">
+    <label class="fi-label" data-ko="국적" data-en="Nationality">국적</label>
+    <select class="fi" id="edit-nationality" onchange="toggleOtherInput('edit-nationality','edit-nationality-other')">
+      <option value="" data-ko="-- 선택 --" data-en="-- Select --">-- 선택 --</option>
+      <option value="대한민국" data-ko="대한민국" data-en="South Korea">대한민국</option>
+      <option value="미국" data-ko="미국" data-en="United States">미국</option>
+      <option value="기타" data-ko="기타 (직접입력)" data-en="Other (please specify)">기타 (직접입력)</option>
+    </select>
+    <input class="fi" id="edit-nationality-other" style="display:none;margin-top:8px;" placeholder="국적을 입력해 주세요" data-ko-ph="국적을 입력해 주세요" data-en-ph="Please enter nationality">
+    <label class="fi-label" data-ko="체류 자격" data-en="Residency Status">체류 자격</label>
+    <select class="fi" id="edit-residency" onchange="toggleOtherInput('edit-residency','edit-residency-other')">
+      <option value="" data-ko="-- 선택 --" data-en="-- Select --">-- 선택 --</option>
+      <option value="시민권자" data-ko="시민권자" data-en="Citizen">시민권자</option>
+      <option value="영주권자" data-ko="영주권자" data-en="Permanent Resident">영주권자</option>
+      <option value="유학생비자" data-ko="유학생비자 (F-1 등)" data-en="Student Visa (F-1, etc.)">유학생비자 (F-1 등)</option>
+      <option value="취업비자" data-ko="취업비자 (H-1B 등)" data-en="Work Visa (H-1B, etc.)">취업비자 (H-1B 등)</option>
+      <option value="기타" data-ko="기타 (직접입력)" data-en="Other (please specify)">기타 (직접입력)</option>
+    </select>
+    <input class="fi" id="edit-residency-other" style="display:none;margin-top:8px;" placeholder="체류 자격을 입력해 주세요" data-ko-ph="체류 자격을 입력해 주세요" data-en-ph="Please enter residency status">
     <label class="fi-label" data-ko="카카오톡 ID" data-en="KakaoTalk ID">카카오톡 ID</label>
     <input class="fi" id="edit-kakao" placeholder="예: jiancat">
     <label class="fi-label" data-ko="전화번호 (선택)" data-en="Phone Number (optional)">전화번호 (선택)</label>
