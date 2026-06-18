@@ -68,6 +68,15 @@ I thought there had to be a better way. So I built one.
 | v2.6 | Jun 11, 2026 | Review system — Firestore, star rating, volunteer/org distinction, duplicate prevention |
 | v2.7 | Jun 11, 2026 | Login error messages, urgent match request history + cancel, match complete popup, chat layout fix (position:fixed), org name display |
 | v2.8 | Jun 11, 2026 | App exit confirmation popup on back button, README update |
+| v4.0 | Jun 14, 2026 | Full redesign — remove chat, add vol history, org stats, completion tracking |
+| v4.1 | Jun 14, 2026 | Google login + language toggle on login screen, update org account emails |
+| v4.2 | Jun 14, 2026 | Fix 8 bugs + 9 warnings from 230-case audit |
+| v4.3 | Jun 16, 2026 | Fix critical back-button exit bug, Google login diagnostics, dog filter, name field, date picker |
+| v4.4 | Jun 17, 2026 | Fix exit popup double-pushState bug, airline display i18n, Firebase auth domain |
+| v4.5 | Jun 17, 2026 | Fix ENG toggle/title overlap layout, final UX polish pass |
+| v4.6 | Jun 17, 2026 | Fix exit popup duplicate pushState (real root cause), add org login remember-me |
+| v4.7 | Jun 17, 2026 | Add Korean/English name split, booking ref, US address, nationality, residency status fields |
+| v4.8 | Jun 18, 2026 | Add PWA manifest, app icons, service worker — Google Play / App Store 등록 준비 |
 
 ----
 
