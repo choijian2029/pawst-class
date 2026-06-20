@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "com.pawstclass.app-release-7:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.pawstclass.app-main-8:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\xml_filepaths.xml.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\xml\\filepaths.xml"
+    },
+    {
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\xml_shortcuts.xml.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\xml\\shortcuts.xml"
+    },
+    {
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\drawable-anydpi_shortcut_legacy_background.xml.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\drawable-anydpi\\shortcut_legacy_background.xml"
+    },
+    {
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\mipmap-anydpi-v26\\ic_launcher.xml"
+    }
+]
