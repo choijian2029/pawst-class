@@ -1,0 +1,70 @@
+PAWST CLASS — Google Play 스토어 등록 텍스트
+(인증 완료 후 Play Console에 그대로 붙여넣기)
+================================================================
+
+[앱 이름]
+PAWST CLASS
+
+
+[짧은 설명 / Short description] (80자 이내, 현재 76자)
+----------------------------------------------------------------
+Connecting volunteer flight companions with Korean rescue dog organizations
+
+
+[자세한 설명 / Full description] (4,000자 이내)
+----------------------------------------------------------------
+PAWST CLASS connects volunteer flight companions with trusted rescue organizations in Korea to help rescued dogs reach their new homes in the United States.
+
+Each year, volunteers fly from Incheon (ICN) to Atlanta (ATL) and offer to bring a rescue dog along — saving the dog from a long, stressful solo journey and giving partner organizations a safe, affordable way to complete international adoptions.
+
+PAWST CLASS makes this process simple:
+
+★ Volunteers register their flight details and get matched with a dog in need of transport
+★ Partner rescue organizations (K-Pups for Love, Adopt Me Korea, 감자네 하우스) manage dogs and track every step of the journey
+★ Everyone can follow transport status — pending, contacted, and completed — in real time
+
+PAWST CLASS is a free, nonprofit project built to make Korea-to-US rescue dog transport more organized, transparent, and accessible.
+
+Privacy Policy: https://choijian2029.github.io/pawst-class/privacy.html
+Contact: pawstclass.1@gmail.com
+
+
+[카테고리]
+----------------------------------------------------------------
+Lifestyle (기본) / Travel & Local (추가, 선택사항)
+
+
+[연락처 정보]
+----------------------------------------------------------------
+이메일: pawstclass.1@gmail.com
+웹사이트: https://choijian2029.github.io/pawst-class/
+개인정보처리방침 URL: https://choijian2029.github.io/pawst-class/privacy.html
+
+
+[Data safety 설문 — 참고용 답변]
+----------------------------------------------------------------
+수집 데이터 항목: 이름, 이메일 주소, 전화번호, 주소(실제 주소)
+
+각 항목 공통 답변:
+- 수집 목적: 앱 기능 (App functionality)
+- 데이터 출처: 사용자가 직접 입력 (Collected from user)
+- 전송 시 암호화 여부: 예, 암호화하여 전송됨 (Firebase 기본 HTTPS)
+- 사용자의 삭제 요청 가능 여부: 예 (회원 탈퇴 시 즉시 삭제)
+- 제3자 공유: 파트너 구조 단체(K-Pups for Love, Adopt Me Korea, 감자네 하우스)에만 매칭 목적으로 공유
+- 광고/마케팅 목적 사용: 아니요
+- 데이터 수집 거부 시 앱 사용 가능 여부: 아니요 (로그인 필수 앱)
+
+광고 포함 여부: 아니요
+앱 내 구매 여부: 아니요
+
+
+[테스트 계정 — App access 섹션용]
+----------------------------------------------------------------
+봉사자 계정: test1234@gmail.com / tyson0520!
+단체 계정: kpups@pc.com / kpups!
+
+
+[Play Console 가입 시 참고]
+----------------------------------------------------------------
+개발자 표시 이름: Jian Choi
+패키지명(Bundle ID): com.pawstclass.app

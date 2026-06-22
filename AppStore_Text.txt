@@ -1,0 +1,92 @@
+PAWST CLASS — Apple App Store Connect 등록 정보 백업
+(이미 App Store Connect에 입력 완료된 내용 / 기록용)
+================================================================
+
+[계정 정보]
+----------------------------------------------------------------
+Apple ID 계정: taeyoung kim (엄마 명의)
+Team ID: DF9A4QU4C7
+App Store Connect Apple ID(앱 고유번호): 6782223856
+Bundle ID: com.pawstclass.app
+SKU: pawstclass001
+
+
+[앱 이름 / 부제]
+----------------------------------------------------------------
+이름: PAWST CLASS
+부제(Subtitle): Rescue Dog Flight Volunteers
+
+
+[설명 / Description]
+----------------------------------------------------------------
+PAWST CLASS connects volunteer flight companions with trusted rescue organizations in Korea to help rescued dogs reach their new homes in the United States.
+
+Each year, volunteers fly from Incheon (ICN) to Atlanta (ATL) and offer to bring a rescue dog along — saving the dog from a long, stressful solo journey and giving partner organizations a safe, affordable way to complete international adoptions.
+
+PAWST CLASS makes this process simple:
+
+• Volunteers register their flight details and get matched with a dog in need of transport
+• Partner rescue organizations (K-Pups for Love, Adopt Me Korea, 감자네 하우스) manage dogs and track every step of the journey
+• Everyone can follow transport status — pending, contacted, and completed — in real time
+
+PAWST CLASS is a free, nonprofit project built to make Korea-to-US rescue dog transport more organized, transparent, and accessible.
+
+
+[키워드 / Keywords]
+----------------------------------------------------------------
+rescue dog,flight volunteer,Korea,dog adoption,pet transport,Korean Air,nonprofit,animal rescue
+
+
+[URL]
+----------------------------------------------------------------
+Support URL: https://choijian2029.github.io/pawst-class/
+개인정보처리방침 URL: https://choijian2029.github.io/pawst-class/privacy.html
+Marketing URL: (비워둠)
+
+
+[카테고리 / 분류]
+----------------------------------------------------------------
+기본 카테고리: Lifestyle
+추가 카테고리: Travel
+콘텐츠 권한: 타사 콘텐츠 포함 안 함
+연령 등급: 4+
+
+
+[가격]
+----------------------------------------------------------------
+$0.00 (Free) / 기준 국가: 미국(USD)
+
+
+[저작권]
+----------------------------------------------------------------
+© 2026 PAWST CLASS
+
+
+[App Review 정보 — 심사용 로그인]
+----------------------------------------------------------------
+Sign-in required: 예
+Username: test1234@gmail.com
+Password: tyson0520!
+
+연락처:
+- 이름: Choi Jian
+- 전화번호: 4704768690
+- 이메일: pawstclass.1@gmail.com
+
+Notes(심사관에게 전달한 메모):
+This is a free nonprofit app connecting volunteers with rescue organizations.
+Use the provided login to view the volunteer/organization dashboard.
+
+
+[앱이 수집하는 개인정보 — 데이터 유형: 5개]
+----------------------------------------------------------------
+이름 / 이메일 주소 / 전화번호 / 주소 / 기타 사용자 연락처 정보(카카오톡 ID)
+→ 전부 공통: 사용 목적 "앱 기능", "사용자의 신원에 연결됨", 추적 목적 아님
+
+
+[iOS 패키지 관련]
+----------------------------------------------------------------
+PWABuilder 생성 zip: PAWST CLASS.zip (원본, 아이콘 placeholder 결함 있음 — 사용 금지)
+수정본: PAWST_CLASS_iOS_FIXED.zip (아이콘 30종 + 런치스크린 10종 실제 이미지로 교체 완료, 이걸 사용할 것)
+빌드 전 필요: CocoaPods 설치 → `pod install` → .xcworkspace로 열기
+GoogleService-Info.plist: 더미 값 (Push 알림 미사용 앱이라 무시해도 무방)
