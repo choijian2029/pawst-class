@@ -4,6 +4,7 @@ color colorBackground
 color colorPrimary
 color colorPrimaryDark
 color shortcut_background
+drawable ic_launcher_foreground
 drawable shortcut_legacy_background
 mipmap ic_launcher
 string app_name
