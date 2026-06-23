@@ -36,7 +36,7 @@ MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.0] C:\Users\ga
 	android:label
 		ADDED from C:\pawst-class\app\src\main\AndroidManifest.xml:9:9-41
 	android:icon
-		ADDED from C:\pawst-class\app\src\main\AndroidManifest.xml:8:9-43
+		ADDED from C:\pawst-class\app\src\main\AndroidManifest.xml:8:9-56
 	android:allowBackup
 		ADDED from C:\pawst-class\app\src\main\AndroidManifest.xml:7:9-35
 	android:theme
