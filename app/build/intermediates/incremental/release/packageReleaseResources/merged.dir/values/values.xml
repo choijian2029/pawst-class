@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <color name="colorBackground">#F7F3EF</color>
-    <color name="colorPrimary">#FF8C00</color>
-    <color name="colorPrimaryDark">#C25E00</color>
-    <color name="shortcut_background">#F5F5F5</color>
-    <string name="app_name">PAWST CLASS</string>
-    <string name="asset_statements">[{"relation": ["delegate_permission/common.handle_all_urls"], "target": {"namespace": "web", "site": "https://choijian2029.github.io"}}]</string>
-</resources>

@@ -146,6 +146,7 @@ layout notification_template_icon_group
 layout notification_template_part_chronometer
 layout notification_template_part_time
 mipmap ic_launcher
+mipmap ic_maskable
 string app_name
 string asset_statements
 string copy_toast_msg

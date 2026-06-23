@@ -1,46 +1,70 @@
 [
     {
-        "merged": "com.pawstclass.app-release-7:/mipmap-xhdpi_ic_launcher.png.flat",
-        "source": "com.pawstclass.app-main-8:/mipmap-xhdpi/ic_launcher.png"
-    },
-    {
-        "merged": "com.pawstclass.app-release-7:/drawable-anydpi_ic_launcher_foreground_original.png.flat",
-        "source": "com.pawstclass.app-main-8:/drawable-anydpi/ic_launcher_foreground_original.png"
+        "merged": "com.pawstclass.app-release-7:/mipmap-hdpi_ic_maskable.png.flat",
+        "source": "com.pawstclass.app-main-8:/mipmap-hdpi/ic_maskable.png"
     },
     {
         "merged": "com.pawstclass.app-release-7:/mipmap-anydpi-v26_ic_launcher.xml.flat",
         "source": "com.pawstclass.app-main-8:/mipmap-anydpi-v26/ic_launcher.xml"
     },
     {
-        "merged": "com.pawstclass.app-release-7:/mipmap-xxxhdpi_ic_launcher.png.flat",
-        "source": "com.pawstclass.app-main-8:/mipmap-xxxhdpi/ic_launcher.png"
+        "merged": "com.pawstclass.app-release-7:/mipmap-mdpi_ic_maskable.png.flat",
+        "source": "com.pawstclass.app-main-8:/mipmap-mdpi/ic_maskable.png"
     },
     {
-        "merged": "com.pawstclass.app-release-7:/mipmap-xxhdpi_ic_launcher.png.flat",
-        "source": "com.pawstclass.app-main-8:/mipmap-xxhdpi/ic_launcher.png"
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\mipmap-xxxhdpi\\ic_launcher.png"
     },
     {
-        "merged": "com.pawstclass.app-release-7:/mipmap-mdpi_ic_launcher.png.flat",
-        "source": "com.pawstclass.app-main-8:/mipmap-mdpi/ic_launcher.png"
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\mipmap-mdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\mipmap-mdpi\\ic_launcher.png"
     },
     {
-        "merged": "com.pawstclass.app-release-7:/xml_filepaths.xml.flat",
-        "source": "com.pawstclass.app-main-8:/xml/filepaths.xml"
+        "merged": "com.pawstclass.app-release-7:/mipmap-xxxhdpi_ic_maskable.png.flat",
+        "source": "com.pawstclass.app-main-8:/mipmap-xxxhdpi/ic_maskable.png"
     },
     {
-        "merged": "com.pawstclass.app-release-7:/mipmap-hdpi_ic_launcher.png.flat",
-        "source": "com.pawstclass.app-main-8:/mipmap-hdpi/ic_launcher.png"
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\mipmap-hdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\mipmap-hdpi\\ic_launcher.png"
     },
     {
-        "merged": "com.pawstclass.app-release-7:/drawable-anydpi_ic_launcher_foreground.png.flat",
-        "source": "com.pawstclass.app-main-8:/drawable-anydpi/ic_launcher_foreground.png"
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\drawable-anydpi_shortcut_legacy_background.xml.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\drawable-anydpi\\shortcut_legacy_background.xml"
     },
     {
-        "merged": "com.pawstclass.app-release-7:/drawable-anydpi_shortcut_legacy_background.xml.flat",
-        "source": "com.pawstclass.app-main-8:/drawable-anydpi/shortcut_legacy_background.xml"
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\mipmap-xxhdpi\\ic_launcher.png"
     },
     {
-        "merged": "com.pawstclass.app-release-7:/xml_shortcuts.xml.flat",
-        "source": "com.pawstclass.app-main-8:/xml/shortcuts.xml"
+        "merged": "com.pawstclass.app-release-7:/mipmap-xxhdpi_ic_maskable.png.flat",
+        "source": "com.pawstclass.app-main-8:/mipmap-xxhdpi/ic_maskable.png"
+    },
+    {
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\mipmap-anydpi-v26\\ic_launcher.xml"
+    },
+    {
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\mipmap-xhdpi\\ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\drawable-anydpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\drawable-anydpi\\ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.pawstclass.app-release-7:/mipmap-xhdpi_ic_maskable.png.flat",
+        "source": "com.pawstclass.app-main-8:/mipmap-xhdpi/ic_maskable.png"
+    },
+    {
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\xml_filepaths.xml.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\xml\\filepaths.xml"
+    },
+    {
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\xml_shortcuts.xml.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\xml\\shortcuts.xml"
+    },
+    {
+        "merged": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-release-7:\\drawable-anydpi_ic_launcher_foreground_original.png.flat",
+        "source": "C:\\Users\\gamei\\.gradle\\daemon\\8.11.1\\com.pawstclass.app-main-8:\\drawable-anydpi\\ic_launcher_foreground_original.png"
     }
 ]

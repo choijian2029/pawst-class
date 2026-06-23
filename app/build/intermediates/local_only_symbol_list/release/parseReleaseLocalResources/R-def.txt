@@ -8,6 +8,7 @@ drawable ic_launcher_foreground
 drawable ic_launcher_foreground_original
 drawable shortcut_legacy_background
 mipmap ic_launcher
+mipmap ic_maskable
 string app_name
 string asset_statements
 xml filepaths

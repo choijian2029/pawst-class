@@ -12,6 +12,7 @@ com.pawstclass.app:string/manage_space_no_data_toast = 0x7f090006
 com.pawstclass.app:string/fallback_menu_item_open_in_browser = 0x7f090004
 com.pawstclass.app:string/fallback_menu_item_copy_link = 0x7f090003
 com.pawstclass.app:string/asset_statements = 0x7f090001
+com.pawstclass.app:mipmap/ic_maskable = 0x7f080001
 com.pawstclass.app:layout/notification_template_part_chronometer = 0x7f070007
 com.pawstclass.app:layout/notification_action = 0x7f070003
 com.pawstclass.app:layout/custom_dialog = 0x7f070002
