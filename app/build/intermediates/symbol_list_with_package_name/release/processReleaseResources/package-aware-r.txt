@@ -48,6 +48,7 @@ dimen notification_subtext_size
 dimen notification_top_pad
 dimen notification_top_pad_large_text
 drawable ic_launcher_foreground
+drawable ic_launcher_foreground_original
 drawable ic_site_settings
 drawable notification_action_background
 drawable notification_bg
