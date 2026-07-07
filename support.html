@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAWST CLASS - Support</title>
+<style>
+  :root {
+    --accent: #d98c4a;
+    --ink: #2b2620;
+    --muted: #6b6258;
+    --bg: #fdfaf6;
+    --card: #ffffff;
+    --border: #eee0d3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    margin: 0;
+    padding: 0;
+    line-height: 1.65;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .lang-toggle {
+    display: flex;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .lang-toggle button {
+    border: none;
+    background: transparent;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .lang-toggle button.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  h1 {
+    font-size: 28px;
+    margin: 0 0 8px;
+    color: var(--ink);
+  }
+  .lead {
+    color: var(--muted);
+    font-size: 15px;
+    margin-bottom: 32px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    font-size: 16px;
+    margin: 0 0 12px;
+    color: var(--ink);
+  }
+  .contact-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+  }
+  .contact-row a {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .contact-row a:hover { text-decoration: underline; }
+  .faq-item { margin-bottom: 18px; }
+  .faq-item:last-child { margin-bottom: 0; }
+  .faq-q {
+    font-weight: 600;
+    font-size: 14.5px;
+    margin-bottom: 4px;
+  }
+  .faq-a {
+    color: var(--muted);
+    font-size: 14.5px;
+  }
+  .faq-a a { color: var(--accent); }
+  .note {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 12px 0 0;
+  }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 40px;
+  }
+  [data-lang="ko"] { display: none; }
+  body.lang-ko [data-lang="en"] { display: none; }
+  body.lang-ko [data-lang="ko"] { display: block; }
+  body.lang-ko .faq-item [data-lang="ko"] { display: block; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <span class="badge">PAWST CLASS</span>
+      <div class="lang-toggle">
+        <button id="btn-en" class="active" onclick="setLang('en')">EN</button>
+        <button id="btn-ko" onclick="setLang('ko')">한국어</button>
+      </div>
+    </div>
+
+    <div data-lang="en">
+      <h1>Support</h1>
+      <p class="lead">Thank you for using PAWST CLASS. If you have any questions, issues, or feedback, we're happy to help.</p>
+    </div>
+    <div data-lang="ko">
+      <h1>고객 지원</h1>
+      <p class="lead">PAWST CLASS를 이용해 주셔서 감사합니다. 궁금한 점이나 문제, 피드백이 있으시면 언제든 연락 주세요.</p>
+    </div>
+
+    <div class="card">
+      <div data-lang="en"><h2>Contact us</h2></div>
+      <div data-lang="ko"><h2>문의하기</h2></div>
+      <div class="contact-row">
+        <span>✉️</span>
+        <a href="mailto:pawstclass.1@gmail.com">pawstclass.1@gmail.com</a>
+      </div>
+      <p class="note" data-lang="en">We typically respond within 2–3 business days.</p>
+      <p class="note" data-lang="ko">보통 영업일 기준 2~3일 이내에 답변드립니다.</p>
+    </div>
+
+    <div class="card">
+      <div data-lang="en"><h2>Frequently Asked Questions</h2></div>
+      <div data-lang="ko"><h2>자주 묻는 질문</h2></div>
+
+      <div class="faq-item">
+        <div data-lang="en">
+          <div class="faq-q">How do I sign up as a volunteer flight companion?</div>
+          <div class="faq-a">Sign in with Apple or Google, then browse available matching requests submitted by our partner rescue organizations.</div>
+        </div>
+        <div data-lang="ko">
+          <div class="faq-q">이동봉사자로 어떻게 신청하나요?</div>
+          <div class="faq-a">Apple 또는 Google 계정으로 로그인한 후, 협력 단체가 등록한 매칭 신청 목록을 확인하실 수 있습니다.</div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div data-lang="en">
+          <div class="faq-q">Which organizations does PAWST CLASS work with?</div>
+          <div class="faq-a">We currently partner with K-Pups for Love, Adopt Me Korea, and 감자네 하우스.</div>
+        </div>
+        <div data-lang="ko">
+          <div class="faq-q">어떤 단체와 협력하고 있나요?</div>
+          <div class="faq-a">현재 K-Pups for Love, Adopt Me Korea, 감자네 하우스와 협력하고 있습니다.</div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div data-lang="en">
+          <div class="faq-q">How is my personal data handled?</div>
+          <div class="faq-a">Please see our <a href="./privacy.html">Privacy Policy</a> for details.</div>
+        </div>
+        <div data-lang="ko">
+          <div class="faq-q">개인정보는 어떻게 처리되나요?</div>
+          <div class="faq-a">자세한 내용은 <a href="./privacy.html">개인정보처리방침</a>을 확인해 주세요.</div>
+        </div>
+      </div>
+    </div>
+
+    <footer>© 2026 PAWST CLASS</footer>
+  </div>
+
+<script>
+function setLang(lang) {
+  document.body.classList.toggle('lang-ko', lang === 'ko');
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+  document.getElementById('btn-ko').classList.toggle('active', lang === 'ko');
+  document.querySelectorAll('[data-lang="en"]').forEach(el => {
+    el.style.display = lang === 'en' ? '' : 'none';
+  });
+  document.querySelectorAll('[data-lang="ko"]').forEach(el => {
+    el.style.display = lang === 'ko' ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>
