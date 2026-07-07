@@ -223,6 +223,32 @@ function doGoogleLogin() {
       if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
     });
 }
+// ══════════════════════════════════════
+// Apple 로그인
+// ══════════════════════════════════════
+function doAppleLogin() {
+  var isKo = curLang === 'ko';
+  var errEl = document.getElementById('vol-err');
+  if (errEl) { errEl.style.display = 'none'; }
+
+  var provider = new firebase.auth.OAuthProvider('apple.com');
+  provider.addScope('email');
+  provider.addScope('name');
+
+  auth.signInWithPopup(provider)
+    .catch(function(e) {
+      console.error('Apple login error:', e.code, e.message);
+      var msg = isKo ? 'Apple 로그인에 실패했습니다.' : 'Apple login failed.';
+      if (e.code === 'auth/popup-closed-by-user') {
+        msg = isKo ? '로그인 창이 닫혔습니다. 다시 시도해 주세요.' : 'Popup closed. Please try again.';
+      } else if (e.code === 'auth/cancelled-popup-request') {
+        return;
+      } else if (e.code === 'auth/popup-blocked') {
+        msg = isKo ? '팝업이 차단되었습니다. 브라우저 팝업 차단을 해제해 주세요.' : 'Popup blocked. Please allow popups.';
+      }
+      if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+    });
+}
 
 // ══════════════════════════════════════
 // 봉사자 로그인 / 회원가입
