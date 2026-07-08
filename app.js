@@ -190,7 +190,7 @@ function doGoogleLogin() {
   var provider = new firebase.auth.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  auth.signInWithPopup(provider)
+  auth.signInWithRedirect(provider)
     .catch(function(e) {
       console.error('Google login error:', e.code, e.message);
       var msg = isKo ? '구글 로그인에 실패했습니다.' : 'Google login failed.';
@@ -235,7 +235,7 @@ function doAppleLogin() {
   provider.addScope('email');
   provider.addScope('name');
 
-  auth.signInWithPopup(provider)
+  auth.signInWithRedirect(provider)
     .catch(function(e) {
       console.error('Apple login error:', e.code, e.message);
       var msg = isKo ? 'Apple 로그인에 실패했습니다.' : 'Apple login failed.';
@@ -1728,6 +1728,19 @@ window.addEventListener('popstate', function() {
   setTimeout(function() { splash.style.display = 'none'; }, 5700);
 })();
 
+// ══════════════════════════════════════
+// 리다이렉트 로그인 결과 처리 (signInWithRedirect 필수 짝)
+// ══════════════════════════════════════
+auth.getRedirectResult().catch(function(e) {
+  console.error('Redirect result error:', e.code, e.message);
+  var errEl = document.getElementById('vol-err');
+  if (errEl && e.code) {
+    var isKo = curLang === 'ko';
+    var msg = isKo ? '로그인 중 오류가 발생했습니다. (오류: ' + e.code + ')' : 'Login error occurred. (' + e.code + ')';
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+  }
+});
 // 초기화
 history.pushState({}, '', '');
 applyLang();
