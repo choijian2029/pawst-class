@@ -519,6 +519,19 @@ function doRegister() {
     status:      'pending',
     createdAt:   firebase.firestore.FieldValue.serverTimestamp()
   }).then(function() {
+    // 등록 성공 시 어드민 + 협력기관에 이메일 알림 발송 (실패해도 등록 자체는 무관하게 계속 진행)
+    if (typeof emailjs !== 'undefined') {
+      var contactInfo = (kakao ? '카카오: ' + kakao : '') + (kakao && phone ? ' / ' : '') + (phone ? '전화: ' + phone : '');
+      emailjs.send('service_ysdfgjt', '6efvbux', {
+        volunteer_name: nameKo,
+        airline: airlineDisplay(_selAirline),
+        flight_date: date,
+        contact_info: contactInfo || '연락처 미입력'
+      }).catch(function(emailErr) {
+        console.error('EmailJS 알림 발송 실패:', emailErr);
+      });
+    }
+
     alert(isKo
       ? '✅ 항공편이 등록되었습니다!\n파트너 기관에서 카카오톡 또는 전화로 연락드릴 예정입니다.'
       : '✅ Flight registered!\nPartner organizations will contact you via KakaoTalk or phone.');
@@ -1634,16 +1647,16 @@ function closeExitPopup() {
   if (el) el.remove();
   _exitPopupOpen = false;
 }
+var _appExiting = false;
+
 function appExit() {
-  // 모바일 브라우저(삼성 인터넷 등)는 스크립트로 탭/창을 닫는 것을 거의 항상 차단한다.
-  // window.close() 호출 자체가 일부 브라우저에서 페이지 상태를 불안정하게 만들어
-  // 의도와 다르게 화면이 바뀌는 부작용을 일으킬 수 있으므로, 호출하지 않는다.
-  //
-  // 대신, 팝업을 닫고 "종료해도 되는 화면"인 스플래시로 이동시킨다.
-  // showAppExitPopup()이 추가했던 히스토리 엔트리도 정리해서, 이후 뒤로가기를
-  // 다시 눌렀을 때 잔여 히스토리 때문에 동작이 어긋나는 일이 없게 한다.
+  // TWA(Android 앱 셸)에서는 히스토리가 완전히 소진되면 액티비티가 자동으로
+  // 종료(finish)된다. 기존 코드는 스플래시로 "이동"만 시켜서 실제 종료가 안 됐다.
+  // _appExiting 플래그로 popstate 핸들러의 가드(재-pushState)를 건너뛰게 만들어,
+  // 진짜 뒤로가기가 통과되어 앱이 종료되도록 한다.
   closeExitPopup();
-  scGo('s-splash');
+  _appExiting = true;
+  history.go(-(window.history.length));
 }
 
 // ══════════════════════════════════════
@@ -1662,6 +1675,9 @@ function appExit() {
 // 맨 위에 다시 덮어씌워지므로 동일한 원칙이 유지된다.
 // ══════════════════════════════════════
 window.addEventListener('popstate', function() {
+  // 종료 확정 상태면 가드를 다시 채우지 않고 그대로 통과시켜 앱을 종료시킨다.
+  if (_appExiting) return;
+
   // 가장 먼저 히스토리를 다시 채워서, 어떤 분기를 타든 "진짜 뒤로가기(이탈)"를 차단.
   // 이 한 번의 pushState가 이번 뒤로가기에 대한 가드의 전부가 되어야 하므로,
   // 아래에서 scGo/setTab을 호출할 때는 _fromPopstate 플래그로 추가 pushState를 막는다.
