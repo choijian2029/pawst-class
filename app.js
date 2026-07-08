@@ -522,7 +522,7 @@ function doRegister() {
     // 등록 성공 시 어드민 + 협력기관에 이메일 알림 발송 (실패해도 등록 자체는 무관하게 계속 진행)
     if (typeof emailjs !== 'undefined') {
       var contactInfo = (kakao ? '카카오: ' + kakao : '') + (kakao && phone ? ' / ' : '') + (phone ? '전화: ' + phone : '');
-      emailjs.send('service_9k50h63', 'g77eyhv', {
+      emailjs.send('service_9k50h63', 'template_y9vcw98', {
         volunteer_name: nameKo,
         airline: airlineDisplay(_selAirline),
         flight_date: date,
