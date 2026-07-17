@@ -947,7 +947,8 @@ function loadMyPage() {
       '<div id="my-history-list"></div>' +
     '</div>' +
 
-    '<button class="btn-sec" style="margin-top:16px;" onclick="doVolLogout()">' + (isKo?'로그아웃':'Logout') + '</button>';
+    '<button class="btn-sec" style="margin-top:16px;" onclick="doVolLogout()">' + (isKo?'로그아웃':'Logout') + '</button>' +
+    '<button class="btn-sec" style="margin-top:10px;color:var(--re);border-color:var(--re);" onclick="doDeleteAccount()">' + (isKo?'회원 탈퇴':'Delete Account') + '</button>';
 
   // Firestore에서 이력 로드
   db.collection('volunteers').where('email','==',user.email).orderBy('createdAt','desc').get()
@@ -1019,6 +1020,119 @@ function doVolLogout() {
   var isKo = curLang === 'ko';
   if (!confirm(isKo ? '로그아웃 할까요?' : 'Log out?')) return;
   auth.signOut().then(function() { scGo('s-splash'); });
+}
+
+// ══════════════════════════════════════
+// 회원 탈퇴 (계정 삭제) — Apple Guideline 5.1.1(v) 대응
+//
+// 흐름: 확인 팝업 → Firestore 내 데이터 삭제 → Firebase Auth 계정 삭제
+// Firebase는 보안상 "최근 로그인"이 아니면 auth/requires-recent-login 에러를
+// 던지는데, 이 경우 로그인 방식(이메일/구글/애플)에 맞춰 재인증 후 삭제를
+// 이어서 진행한다. 구글/애플은 signInWithRedirect와 동일한 패턴으로
+// reauthenticateWithRedirect를 쓰고, 리다이렉트로 돌아온 뒤
+// getRedirectResult 핸들러에서 sessionStorage 플래그를 보고 삭제를 재개한다.
+// ══════════════════════════════════════
+function doDeleteAccount() {
+  var isKo = curLang === 'ko';
+  var user = auth.currentUser;
+  if (!user) return;
+  if (!confirm(isKo
+    ? '정말 탈퇴하시겠습니까?\n계정과 모든 봉사 이력이 영구적으로 삭제되며 복구할 수 없습니다.'
+    : 'Are you sure you want to delete your account?\nYour account and all volunteer history will be permanently deleted and cannot be recovered.')) return;
+  performAccountDeletion();
+}
+
+function performAccountDeletion() {
+  var user = auth.currentUser;
+  var isKo = curLang === 'ko';
+  if (!user) return;
+
+  deleteUserFirestoreData(user.email)
+    .then(function() { return user.delete(); })
+    .then(function() {
+      alert(isKo ? '계정이 삭제되었습니다.' : 'Your account has been deleted.');
+      sessionStorage.removeItem('pawst_delete_pending');
+      scGo('s-splash');
+    })
+    .catch(function(e) {
+      console.error('Account deletion error:', e.code, e.message);
+      if (e.code === 'auth/requires-recent-login') {
+        reauthenticateAndDelete(user);
+      } else {
+        alert(isKo
+          ? '계정 삭제 중 오류가 발생했습니다: ' + (e.message || '')
+          : 'Error deleting account: ' + (e.message || ''));
+      }
+    });
+}
+
+// Firestore volunteers 컬렉션에서 해당 이메일의 문서를 "익명화" 처리.
+// 완전 삭제 대신 개인 식별/연락 정보만 치환하고, status·flightDate·airline 등
+// 통계용 필드는 남겨서 기관 대시보드 완료 기록 및 EC 증빙 통계가 보존되게 한다.
+// (Apple 5.1.1(v)은 "계정 삭제 + 개인정보 삭제"가 요건이며, 완전한 레코드 삭제까지
+// 요구하지 않는다. GDPR/CCPA 등에서도 삭제 대신 익명화를 인정한다.)
+function deleteUserFirestoreData(email) {
+  return db.collection('volunteers').where('email', '==', email).get()
+    .then(function(snap) {
+      if (snap.empty) return null;
+      var batch = db.batch();
+      snap.docs.forEach(function(doc) {
+        batch.update(doc.ref, {
+          email:           '[deleted-user]',
+          nameKo:          '탈퇴한 사용자',
+          nameEn:          '[deleted user]',
+          name:            '탈퇴한 사용자',
+          kakao:           '',
+          phone:           '',
+          usAddress:       '',
+          bookingRef:      '',
+          nationality:     '',
+          residencyStatus: '',
+          anonymizedAt:    firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      return batch.commit();
+    });
+}
+
+function reauthenticateAndDelete(user) {
+  var isKo = curLang === 'ko';
+  var providerId = (user.providerData[0] && user.providerData[0].providerId) || '';
+
+  if (providerId === 'password') {
+    var pw = prompt(isKo
+      ? '보안을 위해 비밀번호를 다시 입력해 주세요.'
+      : 'For security, please re-enter your password.');
+    if (!pw) return;
+    var cred = firebase.auth.EmailAuthProvider.credential(user.email, pw);
+    user.reauthenticateWithCredential(cred)
+      .then(function() { performAccountDeletion(); })
+      .catch(function(e) {
+        console.error('Reauth error:', e.code, e.message);
+        alert(isKo ? '비밀번호가 올바르지 않습니다.' : 'Incorrect password.');
+      });
+    return;
+  }
+
+  if (providerId === 'google.com') {
+    sessionStorage.setItem('pawst_delete_pending', '1');
+    var gProvider = new firebase.auth.GoogleAuthProvider();
+    user.reauthenticateWithRedirect(gProvider);
+    return;
+  }
+
+  if (providerId === 'apple.com') {
+    sessionStorage.setItem('pawst_delete_pending', '1');
+    var aProvider = new firebase.auth.OAuthProvider('apple.com');
+    aProvider.addScope('email');
+    aProvider.addScope('name');
+    user.reauthenticateWithRedirect(aProvider);
+    return;
+  }
+
+  alert(isKo
+    ? '재인증에 실패했습니다. 로그아웃 후 다시 로그인하여 시도해 주세요.'
+    : 'Reauthentication failed. Please log out, log back in, and try again.');
 }
 
 // ══════════════════════════════════════
@@ -1747,8 +1861,24 @@ window.addEventListener('popstate', function() {
 // ══════════════════════════════════════
 // 리다이렉트 로그인 결과 처리 (signInWithRedirect 필수 짝)
 // ══════════════════════════════════════
-auth.getRedirectResult().catch(function(e) {
+auth.getRedirectResult().then(function(result) {
+  // 회원 탈퇴 재인증(reauthenticateWithRedirect) 후 돌아온 경우 —
+  // 일반 로그인 라우팅(onAuthStateChanged)으로 새지 않고 삭제를 이어서 진행한다.
+  if (sessionStorage.getItem('pawst_delete_pending') === '1') {
+    sessionStorage.removeItem('pawst_delete_pending');
+    if (result && result.user) {
+      performAccountDeletion();
+    }
+  }
+}).catch(function(e) {
   console.error('Redirect result error:', e.code, e.message);
+  // 탈퇴 재인증 중 실패한 경우(취소 등)도 플래그를 정리해서 다음 정상 로그인에 영향 없게 한다.
+  if (sessionStorage.getItem('pawst_delete_pending') === '1') {
+    sessionStorage.removeItem('pawst_delete_pending');
+    var isKo = curLang === 'ko';
+    alert(isKo ? '재인증이 취소되었거나 실패했습니다. 다시 시도해 주세요.' : 'Reauthentication was cancelled or failed. Please try again.');
+    return;
+  }
   var errEl = document.getElementById('vol-err');
   if (errEl && e.code) {
     var isKo = curLang === 'ko';
