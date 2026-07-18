@@ -1,5 +1,5 @@
 // PAWST CLASS — sw.js
-const CACHE = 'pawst-v1';
+const CACHE = 'pawst-v2';
 const SHELL = ['./', './index.html', './style.css', './app.js', './firebase.js', './manifest.json', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
