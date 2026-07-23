@@ -2,14 +2,14 @@ apply plugin: 'com.android.application'
 
 android {
     namespace 'com.pawstclass.app'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.pawstclass.app"
-        minSdk 21
-        targetSdk 35
-        versionCode 7
-        versionName "1.6"
+        minSdk 23
+        targetSdk 36
+        versionCode 8
+        versionName "1.7"
     }
 
     buildTypes {
@@ -25,5 +25,5 @@ android {
 }
 
 dependencies {
-    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.2'
 }

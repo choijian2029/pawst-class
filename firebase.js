@@ -4,7 +4,7 @@
 // Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCEHK3dpsfWJBbLaZqen_1JgnDq3zXY3Z8",
-  authDomain: "auth.pawstclass.com",
+  authDomain: "pawstclass.com",
   projectId: "pawst-class",
   storageBucket: "pawst-class.firebasestorage.app",
   messagingSenderId: "114120835162",
